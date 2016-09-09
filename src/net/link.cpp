@@ -8,7 +8,6 @@ found in the LICENSE file.
 #include <string.h>
 #include <stdarg.h>
 #include <sys/socket.h>
-#include <netdb.h>
 
 #include "link.h"
 
@@ -29,8 +28,9 @@ Link::Link(bool is_server){
 	remote_ip[0] = '\0';
 	remote_port = -1;
 	auth = false;
+    asking = false;
 	ignore_key_range = false;
-	
+
 	if(is_server){
 		input = output = NULL;
 	}else{
@@ -80,49 +80,16 @@ void Link::noblock(bool enable){
 	}
 }
 
-// TODO: check less than 256
-static bool is_ip(const char *host){
-	int dot_count = 0;
-	int digit_count = 0;
-	for(const char *p = host; *p; p++){
-		if(*p == '.'){
-			dot_count += 1;
-			if(digit_count >= 1 && digit_count <= 3){ 
-				digit_count = 0;
-			}else{
-				return false;
-			}   
-		}else if(*p >= '0' && *p <= '9'){
-			digit_count += 1;
-		}else{
-			return false;
-		}   
-	}   
-	return dot_count == 3;
-}
 
-Link* Link::connect(const char *host, int port){
+Link* Link::connect(const char *ip, int port){
 	Link *link;
 	int sock = -1;
-
-	char ip_resolve[INET_ADDRSTRLEN];
-	if(!is_ip(host)){
-		struct hostent *hptr = gethostbyname(host);
-		for(int i=0; hptr && hptr->h_addr_list[i] != NULL; i++){
-			struct in_addr *addr = (struct in_addr *)hptr->h_addr_list[i];
-			if(inet_ntop(AF_INET, addr, ip_resolve, sizeof(ip_resolve))){
-				//printf("resolve %s: %s\n", host, ip_resolve);
-				host = ip_resolve;
-				break;
-			}
-		}
-	}
 
 	struct sockaddr_in addr;
 	bzero(&addr, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons((short)port);
-	inet_pton(AF_INET, host, &addr.sin_addr);
+	inet_pton(AF_INET, ip, &addr.sin_addr);
 
 	if((sock = ::socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		goto sock_err;
@@ -223,7 +190,7 @@ int Link::read(){
 		if(len == -1){
 			if(errno == EINTR){
 				continue;
-			}else if(errno == EWOULDBLOCK){
+			}else if(errno == EWOULDBLOCK || errno == EAGAIN){
 				break;
 			}else{
 				//log_debug("fd: %d, read: -1, want: %d, error: %s", sock, want, strerror(errno));
@@ -242,11 +209,13 @@ int Link::read(){
 		}
 	}
 	//log_debug("read %d", ret);
-	//printf("%s\n", hexmem(input->data(), input->size()).c_str());
 	return ret;
 }
 
 int Link::write(){
+	if(output->total() == INIT_BUFFER_SIZE){
+		output->grow();
+	}
 	int ret = 0;
 	int want;
 	while((want = output->size()) > 0){
@@ -256,7 +225,7 @@ int Link::write(){
 		if(len == -1){
 			if(errno == EINTR){
 				continue;
-			}else if(errno == EWOULDBLOCK){
+			}else if(errno == EWOULDBLOCK || errno == EAGAIN){
 				break;
 			}else{
 				//log_debug("fd: %d, write: -1, error: %s", sock, strerror(errno));
@@ -309,7 +278,7 @@ const std::vector<Bytes>* Link::recv(){
 		size --;
 		parsed ++;
 	}
-	
+
 	// Redis protocol supports
 	if(head[0] == '*'){
 		if(redis == NULL){
@@ -365,17 +334,14 @@ const std::vector<Bytes>* Link::recv(){
 
 		head += head_len + body_len;
 		parsed += head_len + body_len;
-		if(size >= 1 && head[0] == '\n'){
+		if(size > 0 && head[0] == '\n'){
 			head += 1;
 			size -= 1;
 			parsed += 1;
-		}else if(size >= 2 && head[0] == '\r' && head[1] == '\n'){
+		}else if(size > 1 && head[0] == '\r' && head[1] == '\n'){
 			head += 2;
 			size -= 2;
 			parsed += 2;
-		}else if(size >= 2){
-			// bad format
-			return NULL;
 		}else{
 			break;
 		}
@@ -409,7 +375,7 @@ int Link::send(const std::vector<std::string> &resp){
 	if(this->redis){
 		return this->redis->send_resp(this->output, resp);
 	}
-	
+
 	for(int i=0; i<resp.size(); i++){
 		output->append_record(resp[i]);
 	}

@@ -14,6 +14,15 @@ found in the LICENSE file.
 #include <pthread.h>
 #include <queue>
 #include <vector>
+#include <set>
+#include <sys/prctl.h>
+
+#ifndef PR_SET_NAME
+#define PR_SET_NAME 15
+#endif
+
+#define SET_PROC_NAME(name) prctl(PR_SET_NAME, (name), 0, 0, 0);
+//#define SET_PROC_NAME(name) {}
 
 class Mutex{
 	private:
@@ -49,6 +58,23 @@ class Locking{
 		}
 
 };
+
+/*class KeyLock : public Mutex {
+public:
+    KeyLock() {}
+    ~KeyLock() {}
+    void add_key(std::string key) {
+        dict.insert(key);
+    }
+    void del_key(std::string key) {
+        dict.erase(key);
+    }
+    bool test_key(std::string key) {
+        return dict.count(key) != 0;
+    }
+
+    std::set<std::string> dict;
+};*/
 
 /*
 class Semaphore {
@@ -120,7 +146,7 @@ class WorkerPool{
 				int id;
 				virtual void init(){}
 				virtual void destroy(){}
-				virtual int proc(JOB job) = 0;
+				virtual int proc(JOB *job) = 0;
 			private:
 			protected:
 				std::string name;
@@ -146,10 +172,10 @@ class WorkerPool{
 		int fd(){
 			return results.fd();
 		}
-		
+
 		int start(int num_workers);
 		int stop();
-		
+
 		int push(JOB job);
 		int pop(JOB *job);
 };
@@ -352,7 +378,7 @@ void* WorkerPool<W, JOB>::_run_worker(void *arg){
 			::exit(0);
 			break;
 		}
-		worker->proc(job);
+		worker->proc(&job);
 		if(tp->results.push(job) == -1){
 			fprintf(stderr, "results.push error\n");
 			::exit(0);
@@ -396,7 +422,6 @@ int WorkerPool<W, JOB>::stop(){
 		pthread_cancel(tids[i]);
 #endif
 	}
-	started = false;
 	return 0;
 }
 

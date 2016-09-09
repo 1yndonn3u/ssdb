@@ -35,7 +35,7 @@ struct Command{
 	uint64_t calls;
 	double time_wait;
 	double time_proc;
-	
+
 	Command(){
 		flags = 0;
 		proc = NULL;
@@ -53,10 +53,7 @@ struct ProcJob{
 	double stime;
 	double time_wait;
 	double time_proc;
-	
-	const Request *req;
-	Response resp;
-	
+
 	ProcJob(){
 		result = 0;
 		serv = NULL;
@@ -65,8 +62,6 @@ struct ProcJob{
 		stime = 0;
 		time_wait = 0;
 		time_proc = 0;
-	}
-	~ProcJob(){
 	}
 };
 
@@ -113,7 +108,7 @@ public:
 	void set_proc(const std::string &cmd, const char *sflags, proc_t proc);
 	void set_proc(const std::string &cmd, proc_t proc);
 	Command* get_proc(const Bytes &str);
-	
+
 	proc_map_t::iterator begin(){
 		return proc_map.begin();
 	}

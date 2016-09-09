@@ -35,6 +35,37 @@ bool is_file(const std::string &filename){
 	return (bool)S_ISREG(st.st_mode);
 }
 
+static inline
+time_t last_modify_time(const std::string &filename) {
+	struct stat st;
+	if (stat(filename.c_str(), &st) != 0) {
+		return 0;
+	}
+	return st.st_mtime;
+}
+
+static inline
+int create_file(const std::string &filename) {
+	int fd = open(filename.c_str(), O_CREAT|O_EXCL);
+	if (fd < 0) {
+		return fd;
+	}
+	close(fd);
+	return 0;
+}
+
+static inline
+uint64_t filesize(int fd) {
+	assert (fd >= 0);
+
+	struct stat st;
+	int ret = fstat(fd, &st);
+	if (ret != 0) {
+		return 0;
+	}
+	return st.st_size;
+}
+
 // return number of bytes read
 static inline
 int file_get_contents(const std::string &filename, std::string *content){
@@ -66,5 +97,9 @@ int file_put_contents(const std::string &filename, const std::string &content){
 	fclose(fp);
 	return ret == (int)content.size()? ret : -1;
 }
+/*
+int remove_file(const std::string &filename) {
+	return unlink(filename.c_str());
+}*/
 
 #endif

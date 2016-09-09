@@ -23,6 +23,7 @@ found in the LICENSE file.
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "util/slot.h"
 
 #include "version.h"
 
@@ -33,6 +34,23 @@ found in the LICENSE file.
 	#define INT64_MAX		0x7fffffffffffffffLL
 #endif
 
+#ifndef CLUSTER_SLOTS
+    #define CLUSTER_SLOTS 16384
+#endif
+
+#ifndef RAW_KEY_MIGRATING
+    #define MIGRATION_PREFIX  "\xff\xff\xffMIGRATION_PREFIX"
+#endif
+
+#define SAFE_DELETE(x)\
+do{\
+    if(x != NULL) {\
+        delete x;\
+        x = NULL;\
+    }\
+}while(0)
+
+#define KEY_HASH_SLOT(key) key_hash_slot((key).data(), (key).size(), CLUSTER_SLOTS)
 
 static inline double millitime(){
 	struct timeval now;
@@ -44,7 +62,7 @@ static inline double millitime(){
 static inline int64_t time_ms(){
 	struct timeval now;
 	gettimeofday(&now, NULL);
-	return (int64_t)now.tv_sec * 1000 + (int64_t)now.tv_usec/1000;
+	return now.tv_sec * 1000 + now.tv_usec/1000;
 }
 
 #endif

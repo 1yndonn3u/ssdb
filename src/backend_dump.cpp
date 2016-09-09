@@ -6,102 +6,154 @@ found in the LICENSE file.
 #include <pthread.h>
 #include "backend_dump.h"
 #include "util/log.h"
+#include "util/thread.h"
+#include "ssdb/version.h"
 
 BackendDump::BackendDump(SSDB *ssdb){
 	this->ssdb = ssdb;
+	this->tid = 0;
 }
 
 BackendDump::~BackendDump(){
 	log_debug("BackendDump finalized");
 }
 
-void BackendDump::proc(const Link *link){
-	log_info("accept dump client: %d", link->fd());
+/*
+ * This process will only start by write thread.
+ * Lock is unnessary as there is always only one write thread.
+ * Check running() before this function.
+ * flag: 0: regexp 1: slot
+ */
+int BackendDump::proc(const Bytes &pattern){
+	log_info("start dump keys, pattern=%s", pattern.String().c_str());
 	struct run_arg *arg = new run_arg();
-	arg->link = link;
+	arg->pattern = pattern.String();
 	arg->backend = this;
 
-	pthread_t tid;
-	int err = pthread_create(&tid, NULL, &BackendDump::_run_thread, arg);
+	int err = pthread_create(&tid, NULL, &BackendDump::_dump_regex_thread, arg);
 	if(err != 0){
 		log_error("can't create thread: %s", strerror(err));
-		delete link;
+		tid = 0;
 	}
+	return tid == 0 ? 0 : 1;
 }
 
-void* BackendDump::_run_thread(void *arg){
+int BackendDump::proc(int16_t slot) {
+	log_info("start dump slot %d", slot);
+	struct run_arg *arg = new run_arg();
+	arg->slot = slot;
+	arg->backend = this;
+
+	int err = pthread_create(&tid, NULL, &BackendDump::_dump_slot_thread, arg);
+	if(err != 0) {
+		log_error("can't create thread: %s", strerror(err));
+		tid = 0;
+	}
+	return tid == 0 ? 0 : 1;
+}
+
+int BackendDump::running() {
+	return tid == 0 ? 0 : 1;
+}
+
+#define KEYS_FILE_NAME "keys"
+
+void* BackendDump::_dump_regex_thread(void *arg){
 	pthread_detach(pthread_self());
+	SET_PROC_NAME("backend_dump_regex");
 	struct run_arg *p = (struct run_arg*)arg;
-	const BackendDump *backend = p->backend;
-	Link *link = (Link *)p->link;
+	BackendDump *backend = p->backend;
+	std::string pattern = p->pattern;
 	delete p;
 
-	//
-	link->noblock(false);
-
-	const std::vector<Bytes>* req = link->last_recv();
-
-	std::string start = "";
-	if(req->size() > 1){
-		Bytes b = req->at(1);
-		start.assign(b.data(), b.size());
-	}
-	if(start.empty()){
-		start = "A";
-	}
-	std::string end = "";
-	if(req->size() > 2){
-		Bytes b = req->at(2);
-		end.assign(b.data(), b.size());
-	}
-	uint64_t limit = 10;
-	if(req->size() > 3){
-		Bytes b = req->at(3);
-		limit = b.Uint64();
+	int unixtime = time(NULL);
+	char tmpfile[256];
+	snprintf(tmpfile, 256, "temp-%d.%ld.keys", unixtime, (long)(pthread_self()));
+	int fd = open(tmpfile,O_CREAT|O_WRONLY|O_EXCL,0644);
+	if(fd == -1) {
+		log_error("create temp file for keys failed");
+		backend->tid = 0;
+		return NULL;
 	}
 
-	log_info("fd: %d, begin to dump data: '%s', '%s', %" PRIu64 "",
-		link->fd(), start.c_str(), end.c_str(), limit);
+	Iterator *it = backend->ssdb->keys();
+	if(it == NULL) {
+		log_error("create iterator for keys failed");
+		backend->tid = 0;
+		return NULL;
+	}
 
-	Buffer *output = link->output;
-
-	int count = 0;
-	bool quit = false;
-	Iterator *it = backend->ssdb->iterator(start, end, limit);
-	
-	link->send("begin");
-	while(!quit){
-		if(!it->next()){
-			quit = true;
-			char buf[20];
-			snprintf(buf, sizeof(buf), "%d", count);
-			link->send("end", buf);
-		}else{
-			count ++;
-			Bytes key = it->key();
-			Bytes val = it->val();
-
-			output->append_record("set");
-			output->append_record(key);
-			output->append_record(val);
-			output->append('\n');
-
-			if(output->size() < 32 * 1024){
-				continue;
-			}
+	int allkeys = (pattern[0] == '*' && pattern[1] == '\0');
+	while(it->next()) {
+		std::string k;
+		if (decode_version_key(it->key(), &k) != 0) {
+			continue;
 		}
 
-		if(link->flush() == -1){
-			log_error("fd: %d, send error: %s", link->fd(), strerror(errno));
-			break;
+		if(allkeys ||  stringmatchlen(pattern.data(), pattern.size(), k.data(), k.size(),0)) {
+			log_debug("write key %s", k.c_str());
+			write(fd, k.data(), k.size());
+			write(fd, "\n", 1);
 		}
 	}
-	// wait for client to close connection,
-	// or client may get a "Connection reset by peer" error.
-	link->read();
 
-	log_info("fd: %d, delete link", link->fd());
-	delete link;
-	delete it;
-	return (void *)NULL;
+	SAFE_DELETE(it);
+	close(fd);
+	if(rename(tmpfile, KEYS_FILE_NAME) == -1) {
+		log_error("failed to rename tmpfile to keys file");
+	}
+	backend->tid = 0;
+	log_info("dump keys done");
+	return NULL;
+}
+
+
+void* BackendDump::_dump_slot_thread(void *arg){
+	pthread_detach(pthread_self());
+	SET_PROC_NAME("backend_dump_slot");
+	struct run_arg *p = (struct run_arg*)arg;
+	BackendDump *backend = p->backend;
+	int16_t slot = p->slot;
+	delete p;
+
+	int unixtime = time(NULL);
+	char tmpfile[256];
+	char targetfile[256];
+	snprintf(tmpfile, 256, "temp-%d.%ld.slot-%d", unixtime, (long)(pthread_self()), slot);
+	snprintf(targetfile, 256, "slot-%d", slot);
+	int fd = open(tmpfile,O_CREAT|O_WRONLY|O_EXCL,0644);
+	if(fd == -1) {
+		log_error("create temp file for keys failed");
+		backend->tid = 0;
+		return NULL;
+	}
+
+	Iterator *it = backend->ssdb->keys();
+	if(it == NULL) {
+		log_error("create iterator for keys failed");
+		backend->tid = 0;
+		return NULL;
+	}
+
+	while(it->next()) {
+		std::string k;
+		if (decode_version_key(it->key(), &k) != 0) {
+			continue;
+		}
+
+		if(KEY_HASH_SLOT(k) == slot) {
+			log_debug("write key %s", k.c_str());
+			write(fd, k.data(), k.size());
+			write(fd, "\n", 1);
+		}
+	}
+
+	SAFE_DELETE(it);
+	close(fd);
+	if(rename(tmpfile, targetfile) == -1) {
+		log_error("failed to rename tmpfile to keys file");
+	}
+	backend->tid = 0;
+	log_info("dump slot %d done", slot);
+	return NULL;
 }

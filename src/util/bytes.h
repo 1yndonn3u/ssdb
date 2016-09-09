@@ -40,6 +40,15 @@ class Bytes{
 			size_ = (int)strlen(str);
 		}
 
+		void assign(const char *data, size_t size) {
+			data_ = data;
+			size_ = size;
+		}
+
+		void assign(const std::string &str) {
+			assign(str.data(), str.size());
+		}
+
 		const char* data() const{
 			return data_;
 		}
@@ -218,13 +227,18 @@ public:
 		size -= sizeof(uint64_t);
 		return sizeof(uint64_t);
 	}
-	int read_data(std::string *ret){
+	int read_data(std::string *ret, int len){
 		int n = size;
-		if(ret){
-			ret->assign(p, size);
+		if (len < 0) {
+			n = len + size < 0 ? 0 : len + size;
+		} else {
+			n = len < size ? len : size;
 		}
-		p += size;
-		size = 0;
+		if(ret){
+			ret->assign(p, n);
+		}
+		p += n;
+		size -= n;
 		return n;
 	}
 	int read_8_data(std::string *ret=NULL){

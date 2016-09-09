@@ -12,7 +12,7 @@ int SortedSet::size() const{
 int SortedSet::add(const std::string &key, int64_t score){
 	int ret;
 	std::map<std::string, std::set<Item>::iterator>::iterator it;
-	
+
 	it = existed.find(key);
 	if(it == existed.end()){
 		// new item
@@ -28,21 +28,21 @@ int SortedSet::add(const std::string &key, int64_t score){
 		// remove existing item
 		sorted_set.erase(it2);
 	}
-	
+
 	Item item;
 	item.key = key;
 	item.score = score;
-	
+
 	std::pair<std::set<Item>::iterator, bool> p = sorted_set.insert(item);
 	existed[key] = p.first;
-	
+
 	return ret;
 }
 
 int SortedSet::del(const std::string &key){
 	int ret;
 	std::map<std::string, std::set<Item>::iterator>::iterator it;
-	
+
 	it = existed.find(key);
 	if(it == existed.end()){
 		// new item

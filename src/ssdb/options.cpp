@@ -6,12 +6,6 @@ found in the LICENSE file.
 #include "options.h"
 #include "../util/strings.h"
 
-#ifdef NDEBUG
-	static const int LOG_QUEUE_SIZE  = 20 * 1000 * 1000;
-#else
-	static const int LOG_QUEUE_SIZE  = 10000;
-#endif
-
 Options::Options(){
 	Config c;
 	this->load(c);
@@ -24,31 +18,30 @@ void Options::load(const Config &conf){
 	block_size = (size_t)conf.get_num("leveldb.block_size");
 	compaction_speed = conf.get_num("leveldb.compaction_speed");
 	compression = conf.get_str("leveldb.compression");
-	std::string binlog = conf.get_str("replication.binlog");
-	binlog_capacity = (size_t)conf.get_num("replication.binlog.capacity");
+	//int binlog = conf.get_num("rpl.binlog");
+	binlog_dir = conf.get_str("rpl.binlog_dir");
+	int sync_binlog = conf.get_num("rpl.sync_binlog");
+	max_binlog_size = conf.get_num("rpl.max_binlog_size");
+	std::string purge_logs_span_str = conf.get_str("rpl.purge_logs_span");
 
 	strtolower(&compression);
 	if(compression != "no"){
 		compression = "yes";
 	}
-	strtolower(&binlog);
-	if(binlog != "yes"){
-		this->binlog = false;
-	}else{
-		this->binlog = true;
-	}
-	if(binlog_capacity <= 0){
-		binlog_capacity = LOG_QUEUE_SIZE;
-	}
+
+	//this->binlog = (binlog==1) ? true : false;
+	// always enable binlog
+	this->binlog = true;
+	this->sync_binlog = (sync_binlog==1) ? true : false;
 
 	if(cache_size <= 0){
-		cache_size = 16;
+		cache_size = 8;
 	}
 	if(write_buffer_size <= 0){
-		write_buffer_size = 16;
+		write_buffer_size = 4;
 	}
 	if(block_size <= 0){
-		block_size = 16;
+		block_size = 4;
 	}
 	if(max_open_files <= 0){
 		max_open_files = cache_size / 1024 * 300;
@@ -58,5 +51,10 @@ void Options::load(const Config &conf){
 		if(max_open_files > 1000){
 			max_open_files = 1000;
 		}
+	}
+
+	purge_logs_span = str_to_span(purge_logs_span_str);
+	if (purge_logs_span < 0) {
+		purge_logs_span = 0;
 	}
 }

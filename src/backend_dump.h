@@ -13,15 +13,20 @@ found in the LICENSE file.
 class BackendDump{
 private:
 	struct run_arg{
-		const Link *link;
-		const BackendDump *backend;
+		BackendDump *backend;
+		std::string pattern;
+		int16_t slot;
 	};
-	static void* _run_thread(void *arg);
+	static void* _dump_regex_thread(void *arg);
+	static void* _dump_slot_thread(void *arg);
 	SSDB *ssdb;
+	pthread_t tid;
 public:
 	BackendDump(SSDB *ssdb);
 	~BackendDump();
-	void proc(const Link *link);
+	int proc(const Bytes &pattern);
+	int proc(int16_t slot);
+	int running();
 };
 
 #endif

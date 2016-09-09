@@ -11,7 +11,7 @@ public:
 	virtual ~Application(){};
 
 	int main(int argc, char **argv);
-	
+
 	virtual void usage(int argc, char **argv);
 	virtual void welcome() = 0;
 	virtual void run() = 0;
@@ -32,7 +32,7 @@ protected:
 
 	Config *conf;
 	AppArgs app_args;
-	
+
 private:
 	void parse_args(int argc, char **argv);
 	void init();

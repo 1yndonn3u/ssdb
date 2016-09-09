@@ -10,6 +10,10 @@ int Response::size() const{
 	return (int)resp.size();
 }
 
+void Response::clear() {
+	resp.clear();
+}
+
 void Response::push_back(const std::string &s){
 	resp.push_back(s);
 }
@@ -90,7 +94,7 @@ void Response::reply_get(int status, const std::string *val, const char *errmsg)
 	if(errmsg){
 		resp.push_back(errmsg);
 	}
-} 
+}
 
 void Response::reply_list(int status, const std::vector<std::string> &list){
 	if(status == -1){

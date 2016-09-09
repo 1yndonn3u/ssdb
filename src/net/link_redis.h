@@ -28,12 +28,12 @@ private:
 	std::vector<std::string> recv_string;
 	int parse_req(Buffer *input);
 	int convert_req();
-	
+
 public:
 	RedisLink(){
 		req_desc = NULL;
 	}
-	
+
 	const std::vector<Bytes>* recv_req(Buffer *input);
 	int send_resp(Buffer *output, const std::vector<std::string> &resp);
 };

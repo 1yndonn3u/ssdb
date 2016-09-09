@@ -13,9 +13,9 @@ int Application::main(int argc, char **argv){
 	parse_args(argc, argv);
 	init();
 
-	write_pid();
+	//write_pid();
 	run();
-	remove_pidfile();
+	//remove_pidfile();
 	
 	delete conf;
 	return 0;
@@ -74,13 +74,13 @@ void Application::init(){
 		fprintf(stderr, "error loading conf file: '%s'\n", app_args.conf_file.c_str());
 		exit(1);
 	}
-	{
+	/*{
 		std::string conf_dir = real_dirname(app_args.conf_file.c_str());
 		if(chdir(conf_dir.c_str()) == -1){
 			fprintf(stderr, "error chdir: %s\n", conf_dir.c_str());
 			exit(1);
 		}
-	}
+	}*/
 
 	app_args.pidfile = conf->get_str("pidfile");
 
@@ -147,9 +147,6 @@ int Application::read_pid(){
 }
 
 void Application::write_pid(){
-	if(!app_args.is_daemon){
-		return;
-	}
 	if(app_args.pidfile.empty()){
 		return;
 	}
@@ -163,9 +160,6 @@ void Application::write_pid(){
 }
 
 void Application::check_pidfile(){
-	if(!app_args.is_daemon){
-		return;
-	}
 	if(app_args.pidfile.size()){
 		if(access(app_args.pidfile.c_str(), F_OK) == 0){
 			fprintf(stderr, "Fatal error!\nPidfile %s already exists!\n"
@@ -178,9 +172,6 @@ void Application::check_pidfile(){
 }
 
 void Application::remove_pidfile(){
-	if(!app_args.is_daemon){
-		return;
-	}
 	if(app_args.pidfile.size()){
 		remove(app_args.pidfile.c_str());
 	}

@@ -8,7 +8,7 @@ found in the LICENSE file.
 
 #include "../include.h"
 #include <string>
-#include <vector>
+#include <map>
 
 #include "fde.h"
 #include "proc.h"
@@ -19,7 +19,7 @@ class Config;
 class IpFilter;
 class Fdevents;
 
-typedef std::vector<Link *> ready_list_t;
+typedef std::map<int, Link *> link_dict_t;
 
 class NetworkServer
 {
@@ -29,13 +29,15 @@ private:
 
 	//Config *conf;
 	Link *serv_link;
+	IpFilter *ip_filter;
 	Fdevents *fdes;
 
 	Link* accept_link();
-	int proc_result(ProcJob *job, ready_list_t *ready_list);
-	int proc_client_event(const Fdevent *fde, ready_list_t *ready_list);
+	int proc_result(ProcJob *job, link_dict_t *ready_list);
+	int proc_client_event(const Fdevent *fde, link_dict_t *ready_list);
+	static void* _ops_timer_thread(void *arg);
 
-	int proc(ProcJob *job);
+	void proc(ProcJob *job);
 
 	int num_readers;
 	int num_writers;
@@ -48,15 +50,18 @@ protected:
 	void usage(int argc, char **argv);
 
 public:
-	IpFilter *ip_filter;
 	void *data;
 	ProcMap proc_map;
 	int link_count;
+	uint64_t ops;
+	uint64_t total_calls;
+	static int clients_paused;
+	static int64_t clients_pause_end_time;
 	bool need_auth;
 	std::string password;
 
 	~NetworkServer();
-	
+
 	// could be called only once
 	static NetworkServer* init(const char *conf_file, int num_readers=-1, int num_writers=-1);
 	static NetworkServer* init(const Config &conf, int num_readers=-1, int num_writers=-1);

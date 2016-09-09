@@ -14,7 +14,7 @@ public:
 		T p;
 	public:
 		friend class LinkedList;
-		
+
 		T next(){
 			T ret = p;
 			if(p){
@@ -28,23 +28,23 @@ public:
 	int size;
 	T head;
 	T tail;
-	
+
 	LinkedList(){
 		size = 0;
 		head = NULL;
 		tail = NULL;
 	}
-	
+
 	Iterator iterator(){
 		Iterator it;
 		it.p = this->head;
 		return it;
 	}
-	
+
 	bool empty() const{
 		return size == 0;
 	}
-	
+
 	void remove(T t){
 		this->size --;
 		if(t->prev){
@@ -60,7 +60,7 @@ public:
 			this->tail = t->prev;
 		}
 	}
-	
+
 	T pop_front(){
 		T t = this->head;
 		this->remove(t);

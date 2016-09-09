@@ -13,7 +13,7 @@ class Options
 public:
 	Options();
 	~Options(){}
-	
+
 	void load(const Config &conf);
 
 	size_t cache_size;
@@ -23,7 +23,10 @@ public:
 	int compaction_speed;
 	std::string compression;
 	bool binlog;
-	size_t binlog_capacity;
+	bool sync_binlog;
+	std::string binlog_dir;
+	int max_binlog_size; // MB
+	time_t purge_logs_span;
 };
 
 #endif

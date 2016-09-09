@@ -39,7 +39,7 @@ int proc_cluster_add_kv_node(NetworkServer *net, Link *link, const Request &req,
 		resp->add("client_error");
 		return 0;
 	}
-	
+
 	std::string ip = req[1].String();
 	int port = req[2].Int();
 	int id = cluster->add_kv_node(ip, port);
@@ -58,7 +58,7 @@ int proc_cluster_del_kv_node(NetworkServer *net, Link *link, const Request &req,
 		resp->add("client_error");
 		return 0;
 	}
-	
+
 	int id = req[1].Int();
 	int ret = cluster->del_kv_node(id);
 	if(ret == -1){
@@ -76,7 +76,7 @@ int proc_cluster_set_kv_range(NetworkServer *net, Link *link, const Request &req
 		resp->add("client_error");
 		return 0;
 	}
-	
+
 	int id = req[1].Int();
 	std::string begin = req[2].String();
 	std::string end = req[3].String();
@@ -96,7 +96,7 @@ int proc_cluster_set_kv_status(NetworkServer *net, Link *link, const Request &re
 		resp->add("client_error");
 		return 0;
 	}
-	
+
 	int id = req[1].Int();
 	int status = req[2].Int();
 	if(status != Node::INIT && status != Node::SERVING){

@@ -396,6 +396,158 @@ int bitcount(const char *p, int size){
 	return n;
 }
 
+static inline
+time_t str_to_span(const std::string &str){
+	const char *start = str.c_str();
+	char *end;
+	int ret = (int)strtol(start, &end, 10);
+	char t = '\0';
+	if(size_t(end - start) == str.size() - 1){
+		t = *end;
+	}
+
+	switch (t) {
+	case 's':
+		ret *= 1;
+		break;
+	case 'm':
+		ret *= 60;
+		break;
+	case 'h':
+		ret *= 3600;
+		break;
+	case 'd':
+		ret *= 86400;
+		break;
+	default:
+		ret = 0;
+		errno = EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static int stringmatchlen(const char *pattern, int patternLen,
+		const char *string, int stringLen, int nocase) {
+	while(patternLen) {
+		switch(pattern[0]) {
+		case '*':
+			while (pattern[1] == '*') {
+				pattern++;
+				patternLen--;
+			}
+			if (patternLen == 1)
+				return 1; /* match */
+			while(stringLen) {
+				if (stringmatchlen(pattern+1, patternLen-1, string, stringLen, nocase))
+				return 1; /* match */
+				string++;
+				stringLen--;
+			}
+			return 0; /* no match */
+			break;
+		case '?':
+			if (stringLen == 0)
+				return 0; /* no match */
+			string++;
+			stringLen--;
+			break;
+		case '[':
+		{
+			int no, match;
+
+			pattern++;
+			patternLen--;
+			no = pattern[0] == '^';
+			if (no) {
+				pattern++;
+				patternLen--;
+			}
+			match = 0;
+			while(1) {
+				if (pattern[0] == '\\') {
+					pattern++;
+					patternLen--;
+					if (pattern[0] == string[0])
+						match = 1;
+				} else if (pattern[0] == ']') {
+					break;
+				} else if (patternLen == 0) {
+					pattern--;
+					patternLen++;
+					break;
+				} else if (pattern[1] == '-' && patternLen >= 3) {
+					int start = pattern[0];
+					int end = pattern[2];
+					int c = string[0];
+					if (start > end) {
+					int t = start;
+						start = end;
+						end = t;
+					}
+					if (nocase) {
+						start = tolower(start);
+						end = tolower(end);
+						c = tolower(c);
+				}
+					pattern += 2;
+					patternLen -= 2;
+					if (c >= start && c <= end)
+						match = 1;
+				} else {
+					if (!nocase) {
+						if (pattern[0] == string[0])
+							match = 1;
+					} else {
+						if (tolower((int)pattern[0]) == tolower((int)string[0]))
+							match = 1;
+					}
+				}
+				pattern++;
+				patternLen--;
+			}
+			if (no)
+				match = !match;
+			if (!match)
+				return 0; /* no match */
+			string++;
+			stringLen--;
+			break;
+		}
+		case '\\':
+			if (patternLen >= 2) {
+				pattern++;
+				patternLen--;
+			}
+			/* fall through */
+		default:
+			if (!nocase) {
+				if (pattern[0] != string[0])
+					return 0; /* no match */
+			} else {
+				if (tolower((int)pattern[0]) != tolower((int)string[0]))
+					return 0; /* no match */
+			}
+			string++;
+			stringLen--;
+			break;
+		}
+		pattern++;
+		patternLen--;
+		if (stringLen == 0) {
+			while(*pattern == '*') {
+				pattern++;
+				patternLen--;
+			}
+			break;
+		}
+    }
+	if (patternLen == 0 && stringLen == 0)
+		return 1;
+	return 0;
+}
+
 // is big endia. TODO: auto detect
 #if 0
 	#define big_endian(v) (v)
@@ -416,7 +568,14 @@ int bitcount(const char *p, int size){
 		uint32_t l = v & 0xffffffffull;
 		return big_endian(h) | ((uint64_t)big_endian(l) << 32);
 	}
+
 #endif
 
+#define encode_uint16(s) big_endian((uint16_t)(s))
+#define decode_uint16(s) big_endian((uint16_t)(s))
+#define encode_uint32(s) big_endian((uint32_t)(s))
+#define decode_uint32(s) big_endian((uint32_t)(s))
+#define encode_uint64(s) big_endian((uint64_t)(s))
+#define decode_uint64(s) big_endian((uint64_t)(s))
 
 #endif

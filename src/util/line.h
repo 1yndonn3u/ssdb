@@ -12,15 +12,15 @@ public:
 		val.append("\n");
 		return 0;
 	}
-	
+
 	int write(int data){
 		return this->write(::str(data));
 	}
-	
+
 	int write(int64_t data){
 		return this->write(::str(data));
 	}
-	
+
 	std::string str(){
 		return val;
 	}
@@ -36,11 +36,11 @@ public:
 		buf = s.data();
 		len = (int)s.size();
 	}
-	
+
 	int readline(std::string *ret){
 		return this->read(ret);
 	}
-	
+
 	int read(std::string *ret){
 		while(epos < len && buf[epos] != '\n'){
 			epos ++;
@@ -54,7 +54,7 @@ public:
 		*ret = str_unescape(line);
 		return (int)ret->size();
 	}
-	
+
 	int read(int *ret){
 		std::string line;
 		if(this->read(&line) == -1){
@@ -63,7 +63,7 @@ public:
 		*ret = str_to_int(line);
 		return 0;
 	}
-		
+
 	int read(int64_t *ret){
 		std::string line;
 		if(this->read(&line) == -1){
@@ -72,7 +72,7 @@ public:
 		*ret = str_to_int64(line);
 		return 0;
 	}
-	
+
 public:
 	const char *buf;
 	int len;

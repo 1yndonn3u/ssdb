@@ -35,10 +35,11 @@ class Link{
 
 		bool auth;
 		bool ignore_key_range;
+        bool asking;
 
 		Buffer *input;
 		Buffer *output;
-		
+
 		double create_time;
 		double active_time;
 
@@ -94,7 +95,7 @@ class Link{
 		const std::vector<Bytes>* last_recv(){
 			return &recv_data;
 		}
-		
+
 		/** these methods will send a request to the server, and wait until a response received.
 		 * @return
 		 * NULL: error

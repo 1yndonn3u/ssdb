@@ -22,7 +22,8 @@ int ClusterStore::save_kv_node(const Node &node){
 
 	std::string key = str(node.id);
 	std::string val = enc.str();
-	int ret = db->hset(kv_node_list_key, key, val);
+	Transaction trans(db, kv_node_list_key);
+	int ret = db->hset(kv_node_list_key, key, val, trans, 0);
 	if(ret == -1){
 		log_error("cluster store error!");
 		return -1;
@@ -33,7 +34,7 @@ int ClusterStore::save_kv_node(const Node &node){
 int ClusterStore::load_kv_node(int id, Node *node){
 	std::string key = str(id);
 	std::string val;
-	int ret = db->hget(kv_node_list_key, key, &val);
+	int ret = db->hget(kv_node_list_key, key, &val, 0);
 	if(ret <= 0){
 		return ret;
 	}
@@ -49,7 +50,8 @@ int ClusterStore::load_kv_node(int id, Node *node){
 
 int ClusterStore::del_kv_node(int id){
 	std::string key = str(id);
-	int ret = db->hdel(kv_node_list_key, key);
+	Transaction trans(db, kv_node_list_key);
+	int ret = db->hdel(kv_node_list_key, key, trans, 0);
 	if(ret == -1){
 		log_error("cluster store error!");
 		return -1;
@@ -59,7 +61,7 @@ int ClusterStore::del_kv_node(int id){
 
 int ClusterStore::load_kv_node_list(std::vector<Node> *list){
 	int ret = 0;
-	HIterator *it = db->hscan(kv_node_list_key, "", "", 10000);
+	HIterator *it = db->hscan(kv_node_list_key, "", "", 10000, 0);
 	if(it){
 		while(it->next()){
 			Node node;

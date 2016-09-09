@@ -39,9 +39,9 @@ class Logger{
 		static const int LEVEL_MAX		= 5;
 
 		static int get_level(const char *levelname);
-		
+
 		static Logger* shared();
-		
+
 		std::string level_name();
 		std::string output_name();
 		uint64_t rotate_size();

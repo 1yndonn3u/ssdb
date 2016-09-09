@@ -11,31 +11,28 @@ found in the LICENSE file.
 #include <pthread.h>
 #include <vector>
 #include "ssdb/ssdb_impl.h"
-#include "ssdb/binlog.h"
+#include "ssdb/logevent.h"
 #include "net/link.h"
+#include "rpl_mi.h"
+
+class SSDBServer;
 
 class Slave{
 private:
-	uint64_t last_seq;
-	std::string last_key;
 	uint64_t copy_count;
 	uint64_t sync_count;
-		
-	std::string id_;
 
-	SSDB *ssdb;
+	SSDBServer *serv;
 	SSDB *meta;
 	Link *link;
-	std::string master_ip;
-	int master_port;
 	bool is_mirror;
 	char log_type;
+	int server_port;
 
 	static const int DISCONNECTED = 0;
 	static const int INIT = 1;
 	static const int COPY = 2;
 	static const int SYNC = 4;
-	static const int OUT_OF_SYNC = 8;
 	int status;
 
 	void migrate_old_status();
@@ -44,29 +41,90 @@ private:
 	void load_status();
 	void save_status();
 
-	volatile bool thread_quit;
-	pthread_t run_thread_tid;
 	static void* _run_thread(void *arg);
-		
+
 	int proc(const std::vector<Bytes> &req);
-	int proc_noop(const Binlog &log, const std::vector<Bytes> &req);
-	int proc_copy(const Binlog &log, const std::vector<Bytes> &req);
-	int proc_sync(const Binlog &log, const std::vector<Bytes> &req);
+	int proc(const LogEvent &event, const std::vector<Bytes> &req);
+
+	int proc_noop(uint64_t seq);
+	int proc_noop(const LogEvent &event, const std::vector<Bytes> &req);
+
+	int proc_copy(const LogEvent &event, const std::vector<Bytes> &req);
+
+	int proc_sync(const LogEvent &event, const std::vector<Bytes> &req);
 
 	unsigned int connect_retry;
 	int connect();
-	bool connected(){
-		return link != NULL;
-	}
+	bool connected() { return link != NULL; }
+
 public:
 	std::string auth;
-	Slave(SSDB *ssdb, SSDB *meta, const char *ip, int port, bool is_mirror=false);
+	int failover_seq;
+
+	Slave(SSDBServer *serv, SSDB *meta, int serv_port);
 	~Slave();
 	void start();
 	void stop();
-		
-	void set_id(const std::string &id);
+
+	//void set_id(const std::string &id);
 	std::string stats() const;
+
+public:
+	MasterInfo *mi;
+	volatile bool running;
+	volatile bool quit_thread;
+	pthread_t thread_id;
+	int version;
+
+public:
+	void init();
+	void save_progress(bool include_last_key = false);
+
+private:
+	// KV
+	int proc_k_set(const LogEvent &event);
+	int proc_k_del(const LogEvent &event);
+	int proc_k_incr(const LogEvent &event);
+	int proc_k_decr(const LogEvent &event);
+	int proc_k_expire(const LogEvent &event);
+	int proc_k_expire_at(const LogEvent &event);
+	int proc_k_setbit(const LogEvent &event);
+
+	// HASH
+	int proc_h_set(const LogEvent &event);
+	int proc_h_del(const LogEvent &event);
+	int proc_h_clear(const LogEvent &event);
+	int proc_h_incr(const LogEvent &event);
+	int proc_h_decr(const LogEvent &event);
+
+	// ZSET
+	int proc_z_set(const LogEvent &event);
+	int proc_z_del(const LogEvent &event);
+	int proc_z_clear(const LogEvent &event);
+	int proc_z_incr(const LogEvent &event);
+	int proc_z_decr(const LogEvent &event);
+	int proc_z_pop_front(const LogEvent &event);
+	int proc_z_pop_back(const LogEvent &event);
+
+	// QUEUE
+	int proc_q_push_front(const LogEvent &event);
+	int proc_q_push_back(const LogEvent &event);
+	int proc_q_pop_front(const LogEvent &event);
+	int proc_q_pop_back(const LogEvent &event);
+	int proc_q_fix(const LogEvent &event);
+	int proc_q_clear(const LogEvent &event);
+	int proc_q_set(const LogEvent &event);
+
+	// SET
+	int proc_s_set(const LogEvent &event);
+	int proc_s_del(const LogEvent &event);
+	int proc_s_clear(const LogEvent &event);
+
+	// RAW
+	int proc_raw(const LogEvent &event);
+
+private:
+	static int zpop(ZIterator *iter, SSDBServer *serv, const Bytes &name, Transaction &trans);
 };
 
 #endif

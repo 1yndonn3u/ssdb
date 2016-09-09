@@ -22,8 +22,8 @@ private:
 	static const unsigned int HEADER_LEN = sizeof(uint64_t) + 2;
 public:
 	Binlog(){}
-	Binlog(uint64_t seq, char type, char cmd, const leveldb::Slice &key);
-		
+	Binlog(uint64_t seq, char type, char cmd, const leveldb::Slice &key, int64_t ttl = 0);
+
 	int load(const Bytes &s);
 	int load(const leveldb::Slice &s);
 	int load(const std::string &s);
@@ -32,6 +32,7 @@ public:
 	char type() const;
 	char cmd() const;
 	const Bytes key() const;
+	int64_t ttl() const;
 
 	const char* data() const{
 		return buf.data();
@@ -48,9 +49,14 @@ public:
 // circular queue
 class BinlogQueue{
 private:
+//#ifdef NDEBUG
+	static const int LOG_QUEUE_SIZE  = 20 * 1000 * 1000;
+//#else
+//	static const int LOG_QUEUE_SIZE  = 10000;
+//#endif
 	leveldb::DB *db;
-	uint64_t min_seq_;
-	uint64_t last_seq;
+	uint64_t min_seq;
+	volatile uint64_t last_seq;
 	uint64_t tran_seq;
 	int capacity;
 	leveldb::WriteBatch batch;
@@ -60,14 +66,13 @@ private:
 	int del(uint64_t seq);
 	// [start, end] includesive
 	int del_range(uint64_t start, uint64_t end);
-	
-	void clean_obsolete_binlogs();
+
 	void merge();
 	bool enabled;
 public:
 	Mutex mutex;
 
-	BinlogQueue(leveldb::DB *db, bool enabled=true, int capacity=20000000);
+	BinlogQueue(leveldb::DB *db, bool enabled=true);
 	~BinlogQueue();
 	void begin();
 	void rollback();
@@ -78,27 +83,22 @@ public:
 	void Delete(const leveldb::Slice& key);
 	void add_log(char type, char cmd, const leveldb::Slice &key);
 	void add_log(char type, char cmd, const std::string &key);
-		
+
 	int get(uint64_t seq, Binlog *log) const;
 	int update(uint64_t seq, char type, char cmd, const std::string &key);
-		
+
 	void flush();
-		
+
+	uint64_t get_last_seq() { return this->last_seq; }
+
 	/** @returns
 	 1 : log.seq greater than or equal to seq
 	 0 : not found
 	 -1: error
 	 */
 	int find_next(uint64_t seq, Binlog *log) const;
-	int find_last(Binlog *log) const;
-	
-	uint64_t min_seq() const{
-		return min_seq_;
-	}
-	uint64_t max_seq() const{
-		return last_seq;
-	}
-		
+	int find_last(Binlog *log, const leveldb::Snapshot *snapshot = NULL) const;
+
 	std::string stats() const;
 };
 
@@ -111,7 +111,7 @@ public:
 		logs->mutex.lock();
 		logs->begin();
 	}
-	
+
 	~Transaction(){
 		// it is safe to call rollback after commit
 		logs->rollback();

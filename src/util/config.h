@@ -46,6 +46,7 @@ class Config{
 		static Config* load(const char *filename);
 		int save(FILE *fp) const;
 		int save(const char *filename) const;
+		int rewrite(const char *fileanme) const;
 
 		std::vector<Config *> children;
 		std::string key;

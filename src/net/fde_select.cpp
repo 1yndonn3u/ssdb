@@ -79,7 +79,7 @@ const Fdevents::events_t* Fdevents::wait(int timeout_ms){
 	int i, ret;
 
 	ready_events.clear();
-	
+
 	fd_set t_readset = readset;
 	fd_set t_writeset = writeset;
 

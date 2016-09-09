@@ -17,6 +17,7 @@ public:
 	std::vector<std::string> resp;
 
 	int size() const;
+	void clear();
 	void push_back(const std::string &s);
 	void add(int s);
 	void add(int64_t s);

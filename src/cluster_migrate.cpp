@@ -69,7 +69,7 @@ int64_t ClusterMigrate::move_range(const std::string &max_key, std::string *move
 	// get key range
 	std::vector<std::string> keys;
 	ssdb::Status s;
-	// 从 "" 开始遍历, 是因为在中断之后, 重新执行时, 之前被中断了的数据是可以被迁移的. 
+	// 从 "" 开始遍历, 是因为在中断之后, 重新执行时, 之前被中断了的数据是可以被迁移的.
 	s = src->keys("", max_key, num_keys, &keys);
 	if(!s.ok()){
 		log_error("response error: %s", s.code().c_str());
@@ -80,7 +80,7 @@ int64_t ClusterMigrate::move_range(const std::string &max_key, std::string *move
 	}
 
 	*moved_max_key = keys[keys.size() - 1];
-	
+
 	KeyRange new_src_range(*moved_max_key, max_key);
 	log_info("new src: %s", new_src_range.str().c_str());
 	s = src->set_kv_range(*moved_max_key, max_key);
@@ -97,11 +97,11 @@ int64_t ClusterMigrate::move_range(const std::string &max_key, std::string *move
 			int ret = move_key(key);
 			if(ret == -1){
 				log_error("move key %s error! %s", key.c_str(), s.code().c_str());
-				return -1;  
+				return -1;
 			}
 			bytes += ret;
 		}
-		
+
 		keys.clear();
 
 		s = src->keys("", *moved_max_key, num_keys, &keys);
@@ -127,18 +127,18 @@ int64_t ClusterMigrate::migrate_kv_data(Node *src_node, Node *dst_node, int num_
 		log_error("failed to connect to server!");
 		return -1;
 	}
-	
+
 	if(check_version(src) == -1){
 		return -1;
 	}
 	if(check_version(dst) == -1){
 		return -1;
 	}
-	
+
 	ssdb::Status s;
 	KeyRange src_range = src_node->range;
 	KeyRange dst_range = dst_node->range;
-	
+
 	log_info("old src %s", src_range.str().c_str());
 	log_info("old dst %s", dst_range.str().c_str());
 

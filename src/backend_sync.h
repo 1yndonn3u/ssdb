@@ -16,9 +16,15 @@ found in the LICENSE file.
 #include "net/link.h"
 #include "util/thread.h"
 
+namespace leveldb{
+	class Snapshot;
+}
+
 class BackendSync{
 private:
 	struct Client;
+	struct CopySnapshot;
+
 private:
 	std::vector<Client *> clients;
 	std::vector<Client *> clients_tmp;
@@ -33,11 +39,25 @@ private:
 	std::map<pthread_t, Client *> workers;
 	SSDBImpl *ssdb;
 	int sync_speed;
+
+private:
+	std::map<std::string, CopySnapshot *> snapshots;
+	uint32_t snapshot_timeout;
+
+	static void* _timer_thread(void *arg);
+	void clear_timeout_snapshot();
+
 public:
-	BackendSync(SSDBImpl *ssdb, int sync_speed);
+	CopySnapshot *last_snapshot(const std::string &host);
+	CopySnapshot *create_snapshot(const std::string &host);
+	void release_last_snapshot(const std::string &host);
+	void mark_snapshot(const std::string &host, int status);
+
+public:
+	BackendSync(SSDBImpl *ssdb, int sync_speed, uint32_t snapshot_timeout=3600);
 	~BackendSync();
-	void proc(const Link *link);
-	
+	void proc(const Link *link);                                                   /* sync all */
+
 	std::vector<std::string> stats();
 };
 
@@ -52,21 +72,35 @@ struct BackendSync::Client{
 	uint64_t last_seq;
 	uint64_t last_noop_seq;
 	std::string last_key;
-	const BackendSync *backend;
+	BackendSync *backend;
 	bool is_mirror;
-	
+	int peer_server_port;
+	std::string host;
+
 	Iterator *iter;
 
-	Client(const BackendSync *backend);
+	Client(BackendSync *backend);
 	~Client();
 	void init();
 	void reset();
+    void prepare();
 	void noop();
 	int copy();
 	int sync(BinlogQueue *logs);
-	void out_of_sync();
 
 	std::string stats();
+};
+
+struct BackendSync::CopySnapshot {
+	enum Status {
+		ABORT = 1,
+		ACTIVE = 2,
+	};
+
+	const leveldb::Snapshot *snapshot;
+	int status;
+	time_t last_active;
+	uint64_t binlog_seq;
 };
 
 #endif

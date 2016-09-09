@@ -12,12 +12,13 @@ found in the LICENSE file.
 #include "../util/config.h"
 
 #include "ssdb.h"
-#include "binlog.h"
 #include "iterator.h"
 #include "t_kv.h"
 #include "t_hash.h"
 #include "t_zset.h"
 #include "t_queue.h"
+#include "concurrent.h"
+#include "t_set.h"
 
 inline
 static leveldb::Slice slice(const Bytes &b){
@@ -30,126 +31,177 @@ private:
 	friend class SSDB;
 	leveldb::DB* ldb;
 	leveldb::Options options;
-	
-	SSDBImpl();
+	uint64_t global_version;             /* global version increase by 1 every time coming up to an delete */
+	uint64_t version_update_threshold;   /* threshold to record global version */
+	uint64_t num_version_update;         /* numbers of version updates since last record */
+	int inited;
+	std::string name;
+
+	DBKeyLock *dblocks;
+
+	SSDBImpl(int32_t concurrency=1024);
+
 public:
-	BinlogQueue *binlogs;
-	
+	// concurrent control
+	std::string get_name();
+	virtual void lock_key(const std::string &key);
+	virtual void unlock_key(const std::string &key);
+	virtual void lock_db();
+	virtual void unlock_db();
+	virtual Iterator* keys();
+
+public:
 	virtual ~SSDBImpl();
+
+	virtual int init(const std::string &name);
 
 	virtual int flushdb();
 
+	virtual leveldb::Options get_options();
+
 	// return (start, end], not include start
-	virtual Iterator* iterator(const std::string &start, const std::string &end, uint64_t limit);
-	virtual Iterator* rev_iterator(const std::string &start, const std::string &end, uint64_t limit);
+	virtual Iterator* iterator(const std::string &start, const std::string &end, uint64_t limit, const leveldb::Snapshot *snapshot=NULL);
+	virtual Iterator* rev_iterator(const std::string &start, const std::string &end, uint64_t limit, const leveldb::Snapshot *snapshot=NULL);
 
 	//void flushdb();
 	virtual uint64_t size();
+	virtual uint64_t leveldbfilesize();
 	virtual std::vector<std::string> info();
 	virtual void compact();
 	virtual int key_range(std::vector<std::string> *keys);
-	
-	/* raw operates */
 
-	// repl: whether to sync this operation to slaves
+	/* version control */
+	virtual int new_version(const Bytes &key, char t, uint64_t *version);
+	virtual int get_version(const Bytes &key, char *t, uint64_t *version, const leveldb::Snapshot *snapshot=NULL);
+
+	/* raw operates */
 	virtual int raw_set(const Bytes &key, const Bytes &val);
 	virtual int raw_del(const Bytes &key);
-	virtual int raw_get(const Bytes &key, std::string *val);
+	virtual int raw_get(const Bytes &key, std::string *val, const leveldb::Snapshot *snapshot=NULL);
+	virtual int raw_size(const Bytes &key, int64_t *size);
+	virtual int incr_raw_size(const Bytes &key, int64_t incr, int64_t *size, Transaction &trans);
 
 	/* key value */
-
-	virtual int set(const Bytes &key, const Bytes &val, char log_type=BinlogType::SYNC);
-	virtual int setnx(const Bytes &key, const Bytes &val, char log_type=BinlogType::SYNC);
-	virtual int del(const Bytes &key, char log_type=BinlogType::SYNC);
+	virtual int set(const Bytes &key, const Bytes &val, Transaction &trans, uint64_t version);
+	virtual int del(const Bytes &key, Transaction &trans);
 	// -1: error, 1: ok, 0: value is not an integer or out of range
-	virtual int incr(const Bytes &key, int64_t by, int64_t *new_val, char log_type=BinlogType::SYNC);
-	virtual int multi_set(const std::vector<Bytes> &kvs, int offset=0, char log_type=BinlogType::SYNC);
-	virtual int multi_del(const std::vector<Bytes> &keys, int offset=0, char log_type=BinlogType::SYNC);
-	virtual int setbit(const Bytes &key, int bitoffset, int on, char log_type=BinlogType::SYNC);
-	virtual int getbit(const Bytes &key, int bitoffset);
-	
-	virtual int get(const Bytes &key, std::string *val);
-	virtual int getset(const Bytes &key, std::string *val, const Bytes &newval, char log_type=BinlogType::SYNC);
+	virtual int incr(const Bytes &key, int64_t by, int64_t *new_val, Transaction &trans, uint64_t version);
+	virtual int setbit(const Bytes &key, int bitoffset, int on, Transaction &trans, uint64_t version);
+	virtual int getbit(const Bytes &key, int bitoffset, uint64_t version);
+
+	virtual int get(const Bytes &key, std::string *val, uint64_t version);
 	// return (start, end]
 	virtual KIterator* scan(const Bytes &start, const Bytes &end, uint64_t limit);
 	virtual KIterator* rscan(const Bytes &start, const Bytes &end, uint64_t limit);
 
 	/* hash */
-
-	virtual int hset(const Bytes &name, const Bytes &key, const Bytes &val, char log_type=BinlogType::SYNC);
-	virtual int hdel(const Bytes &name, const Bytes &key, char log_type=BinlogType::SYNC);
+	virtual int hset(const Bytes &key, const Bytes &field, const Bytes &val, Transaction &trans, uint64_t version);
+	virtual int hdel(const Bytes &key, const Bytes &field, Transaction &trans, uint64_t version);
 	// -1: error, 1: ok, 0: value is not an integer or out of range
-	virtual int hincr(const Bytes &name, const Bytes &key, int64_t by, int64_t *new_val, char log_type=BinlogType::SYNC);
+	virtual int hincr(const Bytes &key, const Bytes &field, int64_t by, int64_t *new_val, Transaction &trans, uint64_t version);
 	//int multi_hset(const Bytes &name, const std::vector<Bytes> &kvs, int offset=0, char log_type=BinlogType::SYNC);
 	//int multi_hdel(const Bytes &name, const std::vector<Bytes> &keys, int offset=0, char log_type=BinlogType::SYNC);
 
-	virtual int64_t hsize(const Bytes &name);
-	virtual int64_t hclear(const Bytes &name);
-	virtual int hget(const Bytes &name, const Bytes &key, std::string *val);
+	virtual int64_t hsize(const Bytes &key, uint64_t version);
+	virtual int64_t hclear(const Bytes &key, Transaction &trans, uint64_t version);
+	virtual int hget(const Bytes &key, const Bytes &field, std::string *val, uint64_t version);
 	virtual int hlist(const Bytes &name_s, const Bytes &name_e, uint64_t limit,
 			std::vector<std::string> *list);
 	virtual int hrlist(const Bytes &name_s, const Bytes &name_e, uint64_t limit,
 			std::vector<std::string> *list);
-	virtual HIterator* hscan(const Bytes &name, const Bytes &start, const Bytes &end, uint64_t limit);
-	virtual HIterator* hrscan(const Bytes &name, const Bytes &start, const Bytes &end, uint64_t limit);
+	virtual HIterator* hscan(const Bytes &key, const Bytes &start, const Bytes &end, uint64_t limit, uint64_t version);
+	virtual HIterator* hrscan(const Bytes &key, const Bytes &start, const Bytes &end, uint64_t limit, uint64_t version);
 
 	/* zset */
-
-	virtual int zset(const Bytes &name, const Bytes &key, const Bytes &score, char log_type=BinlogType::SYNC);
-	virtual int zdel(const Bytes &name, const Bytes &key, char log_type=BinlogType::SYNC);
+	virtual int zset(const Bytes &key, const Bytes &field, const Bytes &score, Transaction &trans, uint64_t version);
+	virtual int zdel(const Bytes &key, const Bytes &field, Transaction &trans, uint64_t version);
 	// -1: error, 1: ok, 0: value is not an integer or out of range
-	virtual int zincr(const Bytes &name, const Bytes &key, int64_t by, int64_t *new_val, char log_type=BinlogType::SYNC);
+	virtual int zincr(const Bytes &key, const Bytes &field, int64_t by, int64_t *new_val, Transaction &trans, uint64_t version);
 	//int multi_zset(const Bytes &name, const std::vector<Bytes> &kvs, int offset=0, char log_type=BinlogType::SYNC);
 	//int multi_zdel(const Bytes &name, const std::vector<Bytes> &keys, int offset=0, char log_type=BinlogType::SYNC);
-	
-	virtual int64_t zsize(const Bytes &name);
+
+	virtual int64_t zsize(const Bytes &key, uint64_t version);
 	/**
 	 * @return -1: error; 0: not found; 1: found
 	 */
-	virtual int zget(const Bytes &name, const Bytes &key, std::string *score);
-	virtual int64_t zrank(const Bytes &name, const Bytes &key);
-	virtual int64_t zrrank(const Bytes &name, const Bytes &key);
-	virtual ZIterator* zrange(const Bytes &name, uint64_t offset, uint64_t limit);
-	virtual ZIterator* zrrange(const Bytes &name, uint64_t offset, uint64_t limit);
+	virtual int zget(const Bytes &key, const Bytes &field, std::string *score, uint64_t version, const leveldb::Snapshot *snapshot=NULL);
+	virtual int64_t zrank(const Bytes &key, const Bytes &field, uint64_t version);
+	virtual int64_t zrrank(const Bytes &key, const Bytes &field, uint64_t version);
+	virtual int64_t zclear(const Bytes &key, Transaction &trans, uint64_t version);
+	virtual ZIterator* zrange(const Bytes &key, int64_t start, int64_t stop, uint64_t version);
+	virtual ZIterator* zrrange(const Bytes &key, int64_t start, int64_t stop, uint64_t version);
+	virtual ZIterator* zrange(const Bytes &key, uint64_t offset, uint64_t limit, uint64_t version);
+	virtual ZIterator* zrrange(const Bytes &key, uint64_t offset, uint64_t limit, uint64_t version);
 	/**
 	 * scan by score, but won't return @key if key.score=score_start.
 	 * return (score_start, score_end]
 	 */
-	virtual ZIterator* zscan(const Bytes &name, const Bytes &key,
-			const Bytes &score_start, const Bytes &score_end, uint64_t limit);
-	virtual ZIterator* zrscan(const Bytes &name, const Bytes &key,
-			const Bytes &score_start, const Bytes &score_end, uint64_t limit);
+	virtual ZIterator* zscan(const Bytes &key, const Bytes &field,
+			const Bytes &score_start, const Bytes &score_end, uint64_t limit, uint64_t version);
+	virtual ZIterator* zrscan(const Bytes &key, const Bytes &field,
+			const Bytes &score_start, const Bytes &score_end, uint64_t limit, uint64_t version);
 	virtual int zlist(const Bytes &name_s, const Bytes &name_e, uint64_t limit,
 			std::vector<std::string> *list);
 	virtual int zrlist(const Bytes &name_s, const Bytes &name_e, uint64_t limit,
 			std::vector<std::string> *list);
-	virtual int64_t zfix(const Bytes &name);
-	
-	virtual int64_t qsize(const Bytes &name);
+	/* set */
+	virtual int sget(const Bytes &key, const Bytes &elem, uint64_t version);
+	virtual int sset(const Bytes &key, const Bytes &elem, Transaction &trans, uint64_t version);
+	virtual int sdel(const Bytes &key, const Bytes &elem, Transaction &trans, uint64_t version);
+	virtual int64_t sclear(const Bytes &key, Transaction &trans, uint64_t version);
+	virtual int64_t ssize(const Bytes &key, uint64_t version);
+	virtual SIterator *sscan(const Bytes &key, const Bytes &elem, uint64_t limit, uint64_t version);
+	virtual SIterator *srscan(const Bytes &key, const Bytes &elem, uint64_t limit, uint64_t version);
+	virtual int64_t qsize(const Bytes &key, uint64_t version);
+	virtual int64_t qclear(const Bytes &key, Transaction &trans, uint64_t version);
 	// @return 0: empty queue, 1: item peeked, -1: error
-	virtual int qfront(const Bytes &name, std::string *item);
+	virtual int qfront(const Bytes &key, std::string *item, uint64_t version);
 	// @return 0: empty queue, 1: item peeked, -1: error
-	virtual int qback(const Bytes &name, std::string *item);
+	virtual int qback(const Bytes &key, std::string *item, uint64_t version);
 	// @return -1: error, other: the new length of the queue
-	virtual int64_t qpush_front(const Bytes &name, const Bytes &item, char log_type=BinlogType::SYNC);
-	virtual int64_t qpush_back(const Bytes &name, const Bytes &item, char log_type=BinlogType::SYNC);
+	virtual int64_t qpush_front(const Bytes &key, const Bytes &item, Transaction &trans, uint64_t version);
+	virtual int64_t qpush_back(const Bytes &key, const Bytes &item, Transaction &trans, uint64_t version);
 	// @return 0: empty queue, 1: item popped, -1: error
-	virtual int qpop_front(const Bytes &name, std::string *item, char log_type=BinlogType::SYNC);
-	virtual int qpop_back(const Bytes &name, std::string *item, char log_type=BinlogType::SYNC);
-	virtual int qfix(const Bytes &name);
+	virtual int qpop_front(const Bytes &key, std::string *item, Transaction &trans, uint64_t version);
+	virtual int qpop_back(const Bytes &key, std::string *item, Transaction &trans, uint64_t version);
+	virtual int qfix(const Bytes &key, Transaction &trans);
 	virtual int qlist(const Bytes &name_s, const Bytes &name_e, uint64_t limit,
 			std::vector<std::string> *list);
 	virtual int qrlist(const Bytes &name_s, const Bytes &name_e, uint64_t limit,
 			std::vector<std::string> *list);
-	virtual int qslice(const Bytes &name, int64_t offset, int64_t limit,
+	virtual int qslice(const Bytes &key, int64_t offset, int64_t limit, uint64_t version,
 			std::vector<std::string> *list);
-	virtual int qget(const Bytes &name, int64_t index, std::string *item);
-	virtual int qset(const Bytes &name, int64_t index, const Bytes &item, char log_type=BinlogType::SYNC);
-	virtual int qset_by_seq(const Bytes &name, uint64_t seq, const Bytes &item, char log_type=BinlogType::SYNC);
+	virtual int qget(const Bytes &key, int64_t index, std::string *item, uint64_t version);
+	virtual int qset(const Bytes &key, int64_t index, const Bytes &item, Transaction &trans, uint64_t version);
+	virtual QIterator *qscan(const Bytes &key, uint64_t seq_start, uint64_t limit, uint64_t version);
 
 private:
-	int64_t _qpush(const Bytes &name, const Bytes &item, uint64_t front_or_back_seq, char log_type=BinlogType::SYNC);
-	int _qpop(const Bytes &name, std::string *item, uint64_t front_or_back_seq, char log_type=BinlogType::SYNC);
+	int64_t _qpush(const Bytes &key, const Bytes &item, uint64_t front_or_back_seq, Transaction &trans, uint64_t version);
+	int _qpop(const Bytes &key, std::string *item, uint64_t front_or_back_seq, Transaction &trans, uint64_t version);
+	int _update_global_version();
+
+public:
+	// snapshot
+	virtual const leveldb::Snapshot *get_snapshot();
+	virtual void release_snapshot(const leveldb::Snapshot *snapshot);
+
+	virtual leveldb::Status write(const leveldb::WriteOptions &options, leveldb::WriteBatch *batch);
 };
+
+#define SSDB_CHECK_KEY_LEN(k)\
+do {\
+	if((k).size() > SSDB_KEY_LEN_MAX) {\
+		log_error("key too long");\
+		return -1;\
+	}\
+} while(0)\
+
+#define SSDB_CHECK_KEY_TYPE(tx, ty)\
+do {\
+	if(tx != ty) {\
+		log_error("confilic key type");\
+		return -1;\
+	}\
+} while(0)
 
 #endif

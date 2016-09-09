@@ -277,3 +277,21 @@ int Config::save(const char *filename) const{
 	return 0;
 }
 
+int Config::rewrite(const char *filename) const {
+	char tmpfile[PATH_MAX];
+	struct timeval now;
+	gettimeofday(&now, NULL);
+	int64_t now_us = now.tv_sec * 1000 * 1000 + now.tv_usec;
+	snprintf(tmpfile, PATH_MAX, "%s.%" PRId64, filename, now_us);
+	if (this->save(tmpfile) != 0) {
+		log_error("error create tmpfile '%s': %s", tmpfile, strerror(errno));
+		return -1;
+	}
+	int ret = rename(tmpfile, filename);
+	if (ret != 0) {
+		log_error("error rewrite file '%s': %s", filename, strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+

@@ -39,6 +39,7 @@ install:
 		tools/ssdb-cli tools/ssdb_cli \
 		tools/ssdb-cli.cpy tools/ssdb-dump \
 		tools/ssdb-repair \
+		tools/ssdb-ins.sh \
 		${PREFIX}
 	cp -rf deps/cpy ${PREFIX}/deps
 	chmod 755 ${PREFIX}
@@ -54,6 +55,7 @@ clean:
 	cd src/util; ${MAKE} clean
 	cd src/ssdb; ${MAKE} clean
 	cd src/net; ${MAKE} clean
+	cd src/client; ${MAKE} clean
 	cd src; ${MAKE} clean
 	cd tools; ${MAKE} clean
 
