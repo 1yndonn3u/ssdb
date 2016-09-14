@@ -128,6 +128,11 @@ class DB {
   virtual void GetApproximateSizes(const Range* range, int n,
                                    uint64_t* sizes) = 0;
 
+  // Get leveldb database size of file system space 
+  //
+  // The results may not include the sizes of recently written data.
+  virtual void GetDbSize(uint64_t* size) = 0;
+
   // Compact the underlying storage for the key range [*begin,*end].
   // In particular, deleted and overwritten versions are discarded,
   // and the data is rearranged to reduce the cost of operations

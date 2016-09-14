@@ -261,6 +261,9 @@ class VersionSet {
   // "key" as of version "v".
   uint64_t ApproximateOffsetOf(Version* v, const InternalKey& key);
 
+  // Return the size of database of Version v
+  uint64_t GetVersionDbSize(Version* v);
+
   // Return a human-readable short (single-line) summary of the number
   // of files per level.  Uses *scratch as backing store.
   struct LevelSummaryStorage {

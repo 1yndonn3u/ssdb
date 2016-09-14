@@ -1443,6 +1443,23 @@ void DBImpl::GetApproximateSizes(
   }
 }
 
+void DBImpl::GetDbSize(
+    uint64_t* size) {
+  Version* v;
+  {
+    MutexLock l(&mutex_);
+    versions_->current()->Ref();
+    v = versions_->current();
+  }
+  *size = versions_->GetVersionDbSize(v);
+ 
+  {
+    MutexLock l(&mutex_);
+    v->Unref();
+  }
+}
+
+
 // Default implementations of convenience methods that subclasses of DB
 // can call if they wish
 Status DB::Put(const WriteOptions& opt, const Slice& key, const Slice& value) {

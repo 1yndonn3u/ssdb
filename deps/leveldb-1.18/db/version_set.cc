@@ -1134,6 +1134,18 @@ uint64_t VersionSet::ApproximateOffsetOf(Version* v, const InternalKey& ikey) {
   return result;
 }
 
+uint64_t VersionSet::GetVersionDbSize(Version* v) {
+  uint64_t result = 0;
+  for (int level = 0; level < config::kNumLevels; level++) {
+    const std::vector<FileMetaData*>& files = v->files_[level];
+    for (size_t i = 0; i < files.size(); i++) {
+        result += files[i]->file_size;
+      }
+    }
+  return result;
+}
+
+
 void VersionSet::AddLiveFiles(std::set<uint64_t>* live) {
   for (Version* v = dummy_versions_.next_;
        v != &dummy_versions_;
