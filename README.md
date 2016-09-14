@@ -1,160 +1,269 @@
-# SSDB - A fast NoSQL database for storing big list of data
+# SSDB-Evolution - A fast NoSQL database for storing big list of data derived from SSDB(https://github.com/ideawu/ssdb)
 
-[![Author](https://img.shields.io/badge/author-@ideawu-blue.svg?style=flat)](http://www.ideawu.net/) [![Platform](https://img.shields.io/badge/platform-Linux,%20BSD,%20OS%20X,%20Windows-green.svg?style=flat)](https://github.com/ideawu/ssdb) [![NoSQL](https://img.shields.io/badge/db-NoSQL-pink.svg?tyle=flat)](https://github.com/ideawu/ssdb) [![License](https://img.shields.io/badge/license-New%20BSD-yellow.svg?style=flat)](LICENSE)
+Compare with SSDB, SSDB-Evolution has an more comprehensive and better support for redis commands.
 
+## Improvements
 
-SSDB is a high performace key-value(key-string, key-zset, key-hashmap) NoSQL database, __an alternative to Redis__.
+* Fix some bugs and incompatible implementations
+* Full support expiration for all kinds of structs
+* Re-implement replication with binlog
+* Hot sharding
+* Full support DEL for all kinds of sturcts
+* Splits metadata with userdata
+* Re-implement low-level encoding/decoding for sharding
 
-SSDB is stable, production-ready and is widely used by many Internet companies including QIHU 360.
+## Redis Commands
 
-## Features
+### Keys
 
-* LevelDB client-server support, written in C/C++
-* Designed to store collection data
-* Persistent key-value, key-zset, key-map('hashmap') storage
-* Redis clients are supported
-* Client API supports including C++, PHP, Python, Cpy, Java, nodejs, Ruby, Go([see all](http://ssdb.io/docs/clients.html))
-* Persistent queue service
-* **Replication(master-slave), load balance**
-* GUI administration tool([phpssdbadmin](https://github.com/ssdb/phpssdbadmin))
-* Built-in CLI nagios self-checks
+    +-------------------+------------+-------------------------------------------------------------+
+    |      Command      | Supported? | Format                                                      |
+    +-------------------+------------+-------------------------------------------------------------+
+    |        DEL        |    Yes     | DEL key [key …]                                            |
+    +-------------------+------------+-------------------------------------------------------------+
+    |       DUMP        |    No      | DUMP key                                                    |
+    +-------------------+------------+-------------------------------------------------------------+
+    |      EXISTS       |    Yes     | EXISTS key                                                  |
+    +-------------------+------------+-------------------------------------------------------------+
+    |      EXPIRE       |    Yes     | EXPIRE key seconds|                                         |
+    +-------------------+------------+-------------------------------------------------------------+
+    |     EXPIREAT      |    Yes     | EXPIREAT key timestamp|                                     |
+    +-------------------+------------+-------------------------------------------------------------+
+    |       KEYS        |    No      | KEYS pattern|                                               |
+    +-------------------+------------+-------------------------------------------------------------+
+    |      MIGRATE      |    No      | MIGRATE host port key destination-db timeout|               |
+    +-------------------+------------+-------------------------------------------------------------+
+    |       MOVE        |    No      | MOVE key db|                                                |
+    +-------------------+------------+-------------------------------------------------------------+
+    |      OBJECT       |    No      | OBJECT subcommand [arguments [arguments …]]|                |
+    +-------------------+------------+-------------------------------------------------------------+
+    |      PERSIST      |    No      | PERSIST key|                                                |
+    +-------------------+------------+-------------------------------------------------------------+
+    |      PEXPIRE      |    Yes     | PEXPIRE key milliseconds|                                   |
+    +-------------------+------------+-------------------------------------------------------------+
+    |     PEXPIREAT     |    Yes     | PEXPIREAT key milliseconds-timestamp|                       |
+    +-------------------+------------+-------------------------------------------------------------+
+    |      PTTL         |    No      | PTTL key|                                                   |
+    +-------------------+------------+-------------------------------------------------------------+
+    |     RANDOMKEY     |    No      | RANDOMKEY|                                                  |
+    +-------------------+------------+-------------------------------------------------------------+
+    |      RENAME       |    No      | RENAME key newkey|                                          |
+    +-------------------+------------+-------------------------------------------------------------+
+    |     RENAMENX      |    No      | RENAMENX key newkey|                                        |
+    +-------------------+------------+-------------------------------------------------------------+
+    |      RESTORE      |    No      | RESTORE key ttl serialized-value|                           |
+    +-------------------+------------+-------------------------------------------------------------+
+    |      SORT         |    No    | SORT key [BY pattern] [LIMIT offset count] [GET pattern [GET pattern ...]] [ASC|DESC] [ALPHA] [STORE destination]   |
+    +-------------------+------------+-------------------------------------------------------------+
+    |       TTL         |    Yes     | TTL key|                                                    |
+    +-------------------+------------+--------------------------------——----------------------------+
+    |      TYPE         |    No      | TYPE key|                                                   |
+    +-------------------+------------+-------------------------------------------------------------+
+    |      SCAN         |    No      | SCAN cursor [MATCH pattern] [COUNT count]|                  |
+    +-------------------+------------+-------------------------------------------------------------+
 
-## PHP client API example
+### Strings
 
-```php
-<?php
-require_once('SSDB.php');
-$ssdb = new SimpleSSDB('127.0.0.1', 8888);
-$resp = $ssdb->set('key', '123');
-$resp = $ssdb->get('key');
-echo $resp; // output: 123
-```
+    +-------------------+------------+------------------------------------------------------------+
+    |      Command      | Supported? | Format                                                     |
+    +-------------------+------------+------------------------------------------------------------+
+    |       APPEND      |    No      | APPEND key value                                           |
+    +-------------------+------------+------------------------------------------------------------+
+    |      BITCOUNT     |    Yes     | BITCOUNT key [start] [end]                                 |
+    +-------------------+------------+------------------------------------------------------------+
+    |       BITOP       |    No      | BITOP operation destkey key [key ...]                      |
+    +-------------------+------------+------------------------------------------------------------+
+    |       DECR        |    Yes     | DECR key                                                   |
+    +-------------------+------------+------------------------------------------------------------+
+    |      DECRBY       |    Yes     | DECRBY key decrement                                       |
+    +-------------------+------------+------------------------------------------------------------+
+    |       GET         |    Yes     | GET key                                                    |
+    +-------------------+------------+------------------------------------------------------------+
+    |      GETBIT       |    Yes     | GETBIT key offset                                          |
+    +-------------------+------------+------------------------------------------------------------+
+    |     GETRANGE      |    No      | GETRANGE key start end                                     |
+    +-------------------+------------+------------------------------------------------------------+
+    |      GETSET       |    Yes     | GETSET key value                                           |
+    +-------------------+------------+------------------------------------------------------------+
+    |      INCR         |    Yes     | INCR key                                                   |
+    +-------------------+------------+------------------------------------------------------------+
+    |      INCRBY       |    Yes     | INCRBY key increment                                       |
+    +-------------------+------------+------------------------------------------------------------+
+    |     INCRBYFLOAT   |    No      | INCRBYFLOAT key increment                                  |
+    +-------------------+------------+------------------------------------------------------------+
+    |      MGET         |    Yes     | MGET key [key ...]                                         |
+    +-------------------+------------+------------------------------------------------------------+
+    |      MSET         |    Yes     | MSET key value [key value ...]                             |
+    +-------------------+------------+------------------------------------------------------------+
+    |      MSETNX       |    No      | MSETNX key value [key value ...]                           |
+    +-------------------+------------+------------------------------------------------------------+
+    |      PSETEX       |    No      | PSETEX key milliseconds value                              |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SET          |    Yes     | SET key value [EX seconds] [PX milliseconds] [NX|XX]       |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SETBIT       |    Yes     | SETBIT key offset value                                    |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SETEX        |    Yes     | SETEX key seconds value                                    |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SETNX        |    Yes     | SETNX key value                                            |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SETRANGE     |    No     | SETRANGE key offset value                                  |
+    +-------------------+------------+------------------------------------------------------------+
+    |      STRLEN       |    No     | STRLEN key                                                 |
+    +-------------------+------------+------------------------------------------------------------+
 
-[More...](http://ssdb.io/docs/php/)
+#### Lists
 
+    +-------------------+------------+------------------------------------------------------------+
+    |      Command      | Supported? | Format|                                                     |
+    +-------------------+------------+------------------------------------------------------------+
+    |       BLPOP       |    No      | BLPOP key [key ...] timeout|                                |
+    +-------------------+------------+------------------------------------------------------------+
+    |       BRPOP       |    No      | BRPOP key [key ...] timeout|                                |
+    +-------------------+------------+------------------------------------------------------------+
+    |     BRPOPLPUSH    |    No      | BRPOPLPUSH source destination timeout|                      |
+    +-------------------+------------+------------------------------------------------------------+
+    |      LINDEX       |    Yes     | LINDEX key index|                                           |
+    +-------------------+------------+------------------------------------------------------------+
+    |      LINSERT      |    Yes     | LINSERT key BEFORE|AFTER pivot value|                       |
+    +-------------------+------------+------------------------------------------------------------+
+    |      LLEN         |    Yes     | LLEN key|                                                   |
+    +-------------------+------------+------------------------------------------------------------+
+    |      LPOP         |    Yes     | LPOP key|                                                   |
+    +-------------------+------------+------------------------------------------------------------+
+    |      LPUSH        |    Yes     | LPUSH key value [value ...]|                                |
+    +-------------------+------------+------------------------------------------------------------+
+    |      LPUSHX       |    Yes     | LPUSHX key value|                                           |
+    +-------------------+------------+------------------------------------------------------------+
+    |      LRANGE       |    Yes     | LRANGE key start stop|                                      |
+    +-------------------+------------+------------------------------------------------------------+
+    |      LREM         |    Yes     | LREM key count value|                                       |
+    +-------------------+------------+------------------------------------------------------------+
+    |      LSET         |    Yes     | LSET key index value|                                       |
+    +-------------------+------------+------------------------------------------------------------+
+    |      LTRIM        |    Yes     | LTRIM key start stop|                                       |
+    +-------------------+------------+------------------------------------------------------------+
+    |      RPOP         |    Yes     | RPOP key|                                                   |
+    +-------------------+------------+------------------------------------------------------------+
+    |     RPOPLPUSH     |    No      | RPOPLPUSH source destination|                               |
+    +-------------------+------------+------------------------------------------------------------+
+    |      RPUSH        |    Yes     | RPUSH key value [value ...]|                                |
+    +-------------------+------------+------------------------------------------------------------+
+    |      RPUSHX       |    No      | RPUSHX key value|                                           |
+    +-------------------+------------+------------------------------------------------------------+
 
-## Who's using SSDB?
+### Hashs
 
-![all-ssdb-users](http://ssdb.io/img/ssdb-users/all-ssdb-users.jpg)
+    +-------------------+------------+------------------------------------------------------------+
+    |      Command      | Supported? | Format                                                     |
+    +-------------------+------------+------------------------------------------------------------+
+    |       HDEL        |    Yes     | HDEL key field [field ...]                                 |
+    +-------------------+------------+------------------------------------------------------------+
+    |      HEXISTS      |    Yes     | HEXISTS key field                                          |
+    +-------------------+------------+------------------------------------------------------------+
+    |       HGET        |    Yes     | HGET key field                                             |
+    +-------------------+------------+------------------------------------------------------------+
+    |      HGETALL      |    Yes     | HGETALL key                                                |
+    +-------------------+------------+------------------------------------------------------------+
+    |      HINCRBY      |    Yes     | HINCRBY key field increment                                |
+    +-------------------+------------+------------------------------------------------------------+
+    |    HINCRBYFLOAT   |    No      | HINCRBYFLOAT key field increment                           |
+    +-------------------+------------+------------------------------------------------------------+
+    |      HKEYS        |    Yes     | HKEYS key                                                  |
+    +-------------------+------------+------------------------------------------------------------+
+    |      HLEN         |    Yes     | HLEN key                                                   |
+    +-------------------+------------+------------------------------------------------------------+
+    |      HMGET        |    Yes     | HMGET key field [field ...]                                |
+    +-------------------+------------+------------------------------------------------------------+
+    |      HMSET        |    Yes     | HMSET key field value [field value ...]                    |
+    +-------------------+------------+------------------------------------------------------------+
+    |      HSET         |    Yes     | HSET key field value                                       |
+    +-------------------+------------+------------------------------------------------------------+
+    |      HSETNX       |    No      | HSETNX key field value                                     |
+    +-------------------+------------+------------------------------------------------------------+
+    |      HVALS        |    Yes     | HVALS key                                                  |
+    +-------------------+------------+------------------------------------------------------------+
+    |      HSCAN        |    No      | HSCAN key cursor [MATCH pattern] [COUNT count]             |
+    +-------------------+------------+------------------------------------------------------------+
 
-[And more...](http://ssdb.io/docs/users.html)
+### Sets
 
+     +-------------------+------------+------------------------------------------------------------+
+    |      Command      | Supported? | Format                                                     |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SADD         |    Yes     | SADD key member [member ...]                               |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SCARD        |    Yes     | SCARD key                                                  |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SDIFF        |    No      | SDIFF key [key ...]                                        |
+    +-------------------+------------+------------------------------------------------------------+
+    |     SDIFFSTORE    |    No      | SDIFFSTORE destination key [key ...]                       |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SINTER       |    No      | SINTER key [key ...]                                       |
+    +-------------------+------------+------------------------------------------------------------+
+    |    SINTERSTORE    |    No      | SINTERSTORE destination key [key ...]                      |
+    +-------------------+------------+------------------------------------------------------------+
+    |     SISMEMBER     |    Yes     | SISMEMBER key member                                       |
+    +-------------------+------------+------------------------------------------------------------+
+    |     SMEMBERS      |    Yes     | SMEMBERS key                                               |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SMOVE        |    No      | SMOVE source destination member                            |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SPOP         |    No      | SPOP key                                                   |
+    +-------------------+------------+------------------------------------------------------------+
+    |    SRANDMEMBER    |    No      | SRANDMEMBER key [count]                                    |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SREM         |    Yes     | SREM key member [member ...]                               |
+    +-------------------+------------+------------------------------------------------------------+
+    |     SUNION        |    No      | SUNION key [key ...]                                       |
+    +-------------------+------------+------------------------------------------------------------+
+    |   SUNIONSTORE     |    No      | SUNIONSTORE destination key [key ...]                      |
+    +-------------------+------------+------------------------------------------------------------+
+    |      SSCAN        |    No      | SSCAN key cursor [MATCH pattern] [COUNT count]             |
+    +-------------------+------------+------------------------------------------------------------+
 
-## Documentation
+### Sorted Sets
 
-* [View online](http://ssdb.io/docs/)
-* [Contribute to SSDB documentation project](https://github.com/ideawu/ssdb-docs)
-
-## Compile and Install
-
-```sh
-$ wget --no-check-certificate https://github.com/ideawu/ssdb/archive/master.zip
-$ unzip master
-$ cd ssdb-master
-$ make
-$ #optional, install ssdb in /usr/local/ssdb
-$ sudo make install
-
-# start master
-$ ./ssdb-server ssdb.conf
-
-# or start as daemon
-$ ./ssdb-server -d ssdb.conf
-
-# ssdb command line
-$ ./tools/ssdb-cli -p 8888
-
-# stop ssdb-server
-$ ./ssdb-server ssdb.conf -s stop
- # for older version
-$ kill `cat ./var/ssdb.pid`
-```
-
-See [Compile and Install wiki](http://ssdb.io/docs/install.html)
-
-## Performance
-
-### Typical performance
-
-Total 1000 requests.
-
-```
-writeseq  :    0.546 ms/op      178.7 MB/s
-writerand :    0.519 ms/op      188.1 MB/s
-readseq   :    0.304 ms/op      321.6 MB/s
-readrand  :    0.310 ms/op      315.0 MB/s
-```
-
-### SSDB vs Redis
-
-![Benchmark vs Redis](http://ssdb.io/ssdb-vs-redis.png?github)
-
-[View full SSDB vs Redis benchmark charts...](http://ssdb.io/)
-
-### Concurrency benchmark
-
-```
-========== set ==========
-qps: 44251, time: 0.226 s
-========== get ==========
-qps: 55541, time: 0.180 s
-========== del ==========
-qps: 46080, time: 0.217 s
-========== hset ==========
-qps: 42338, time: 0.236 s
-========== hget ==========
-qps: 55601, time: 0.180 s
-========== hdel ==========
-qps: 46529, time: 0.215 s
-========== zset ==========
-qps: 37381, time: 0.268 s
-========== zget ==========
-qps: 41455, time: 0.241 s
-========== zdel ==========
-qps: 38792, time: 0.258 s
-```
-
-Run on a 2013 MacBook Pro 13 inch with Retina display.
-
-## Architecture
-
-![ssdb architecture](http://ssdb.io/ssdb.png)
-
-## Windows executable
-
-Download ssdb-server.exe from here: https://github.com/ideawu/ssdb-bin
-
-
-## SSDB library for iOS
-
-	make ios
-	# ls ios/
-	include/ libleveldb-ios.a libsnappy-ios.a libssdb-ios.a libutil-ios.a
-
-Drag the static libraies files into your iOS project. Then add `ios/include` to your iOS project's __Header Search Paths__, which is set in __Build Settings__.
-
-## Links
-
-* [Author's homepage](http://www.ideawu.com/blog/)
-* [Cpy Scripting Language](https://github.com/ideawu/cpy)
-* [Google LevelDB](https://code.google.com/p/leveldb/)
-* [Lua ssdb client driver for the ngx_lua](https://github.com/LazyZhu/lua-resty-ssdb)
-* [Yet another ssdb client for Python](https://github.com/ifduyue/pyssdb)
-* [SSDB 中文文档](http://www.ideawu.net/blog/category/ssdb)
-
-## Changes made to LevelDB
-
-See [Changes-Made-to-LevelDB wiki](https://github.com/ideawu/ssdb/wiki/Changes-Made-to-LevelDB)
-
-## LICENSE
-
-SSDB is licensed under [New BSD License](http://opensource.org/licenses/BSD-3-Clause), a very flexible license to use.
-
-## Authors
-
-@ideawu
-
-## Thanks
-
-* 刘建辉, liujianhui@gongchang.com
-* wendal(陈镇铖), wendal1985@gmail.com, http://wendal.net 
+    +-------------------+------------+------------------------------------------------------------+
+    |      Command      | Supported? | Format                                                     |
+    +-------------------+------------+------------------------------------------------------------+
+    |      ZADD         |    Yes     | ZADD key score member [score] [member]                     |
+    +-------------------+------------+------------------------------------------------------------+
+    |      ZCARD        |    Yes     | ZCARD key                                                  |
+    +-------------------+------------+------------------------------------------------------------+
+    |      ZCOUNT       |    Yes     | ZCOUNT key min max                                         |
+    +-------------------+------------+------------------------------------------------------------+
+    |      ZINCRBY      |    Yes     | ZINCRBY key increment member                               |
+    +-------------------+------------+------------------------------------------------------------+
+    |     ZINTERSTORE   |    No      | ZINTERSTORE destination numkeys key [key ...] [WEIGHTS weight [weight ...]] [AGGREGATE SUM|MIN|MAX]                 |
+    +---------------------------------------------------------------------------------------------+
+    |      ZLEXCOUNT    |    No      | ZLEXCOUNT key min max                                      |
+    +-------------------+------------+------------------------------------------------------------+
+    |      ZRANGE       |    Yes     | ZRANGE key start stop [WITHSCORES]                         |
+    +---------------------------------------------------------------------------------------------+
+    |    ZRANGEBYLEX    |    No      | ZRANGEBYLEX key min max [LIMIT offset count]               |
+    +-------------------+------------+------------------------------------------------------------+
+    |    ZRANGEBYSCORE  |    Yes     | ZRANGEBYSCORE key min max [WITHSCORES] [LIMIT offset count]|
+    +-------------------+------------+------------------------------------------------------------+
+    |      ZRANK        |    Yes     | ZRANK key member                                           |
+    +-------------------+------------+------------------------------------------------------------+
+    |       ZREM        |    Yes     | ZREM key member [member ...]                               |
+    +-------------------+------------+------------------------------------------------------------+
+    |   ZREMRANGEBYLEX  |    No      | ZREMRANGEBYLEX key min max                                 |
+    +-------------------+------------+------------------------------------------------------------+
+    |   ZREMRANGEBYRANK |    Yes     | ZREMRANGEBYRANK key start stop                             |
+    +-------------------+------------+------------------------------------------------------------+
+    |  ZREMRANGEBYSCORE |    Yes     | ZREMRANGEBYSCORE key min max                               |
+    +-------------------+------------+------------------------------------------------------------+
+    |    ZREVRANGE      |    Yes     | ZREVRANGE key start stop [WITHSCORES]                      |
+    +-------------------+------------+------------------------------------------------------------+
+    |  ZREVRANGEBYSCORE |    Yes     | ZREVRANGEBYSCORE key max min [WITHSCORES] [LIMIT offset count]                                                      |
+    +-------------------+------------+------------------------------------------------------------+
+    |     ZREVRANK      |    Yes     | ZREVRANK key member                                        |
+    +-------------------+------------+------------------------------------------------------------+
+    |     ZSCORE        |    Yes     | ZSCORE key member                                          |
+    +-------------------+------------+------------------------------------------------------------+
+    |    ZUNIONSTORE    |    No      | ZUNIONSTORE destination numkeys key [key ...] [WEIGHTS weight [weight ...]] [AGGREGATE SUM|MIN|MAX]                 |
+    +-------------------+------------+------------------------------------------------------------+
+    |      ZSCAN        |    No      | ZSCAN key cursor [MATCH pattern] [COUNT count]             |
+    +-------------------+------------+------------------------------------------------------------+
