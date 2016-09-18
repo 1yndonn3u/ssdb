@@ -1,4 +1,4 @@
-# SSDB-Evolution - A fast NoSQL database for storing big list of data derived from SSDB(https://github.com/ideawu/ssdb)
+# SSDB-Evolution - A fast NoSQL database, derived from SSDB(https://github.com/ideawu/ssdb), for storing big list of data
 
 Compare with SSDB, SSDB-Evolution has an more comprehensive and better support for redis commands.
 
@@ -188,7 +188,7 @@ Compare with SSDB, SSDB-Evolution has an more comprehensive and better support f
 
 ### Sets
 
-     +-------------------+------------+------------------------------------------------------------+
+    +-------------------+------------+------------------------------------------------------------+
     |      Command      | Supported? | Format                                                     |
     +-------------------+------------+------------------------------------------------------------+
     |      SADD         |    Yes     | SADD key member [member ...]                               |
@@ -267,3 +267,49 @@ Compare with SSDB, SSDB-Evolution has an more comprehensive and better support f
     +-------------------+------------+------------------------------------------------------------+
     |      ZSCAN        |    No      | ZSCAN key cursor [MATCH pattern] [COUNT count]             |
     +-------------------+------------+------------------------------------------------------------+
+
+## Other Command
+
+    +--------------------------+--------------------------------------------+
+    |  change_master_to        | change_master_to ip port last_seq last_key |
+    +--------------------------+--------------------------------------------+
+    |  start_slave             | start_slave                                |
+    +--------------------------+--------------------------------------------+
+    |  stop_slave              | stop_slave [last_seq]                      |
+    +--------------------------+--------------------------------------------+
+    |  key_slot                | key_slot  key                              |
+    +--------------------------+--------------------------------------------+
+    |  set_slot                | set_slot slot                              |
+    +--------------------------+--------------------------------------------+
+    |  unset_slot              | unset slot                                 |
+    +--------------------------+--------------------------------------------+
+    |  lock_db_with_read_lock  | lock_db_with_read_lock                     |
+    +--------------------------+--------------------------------------------+
+    |  unlock_db               | unlock_db                                  |
+    +--------------------------+--------------------------------------------+
+    |  migrate_slot            | migrate_slot slot ip port timeout speed    |
+    +--------------------------+--------------------------------------------+
+    |  slot_premigrating       | slot_premigrating                          |
+    +--------------------------+--------------------------------------------+
+    |  slot_postmigrating      | slot_postmigrating                         |
+    +--------------------------+--------------------------------------------+
+    |  slot_preimporting       | slot_preimporting                          |
+    +--------------------------+--------------------------------------------+
+    |  slot_postimporting      | slot_postimporting                         |
+    +--------------------------+--------------------------------------------+
+
+### Description
+
+    change_master_to: swith replication context to designated ip and port with last_seq(binlog_seq) and last_key(last sync key in snapshot).
+    start_slave: run replication thread with current replication context with read only mode.
+    stop_slave: stop replication thread.
+    key_slot: test an key the slot it belongs to.
+    set_slot: set the slot that the instance responsible for.
+    unset_slot: clean the slot that the instance responsible for.
+    lock_db_with_read_lock: read only mode.
+    unlock_db: enable write.
+    migrate_slot: migrate specified slot to another instance with the timeout(s) and speed(M).
+    slot_premigrating: flag an slot ready to migrate.
+    slot_postmigrating: flag an slot migration done and clean the responsiblity of this slot.
+    slot_preimporting: flag an slot ready to import.
+    slot_postimporting: flag an slot migration done and set the responsiblity of this slot.
