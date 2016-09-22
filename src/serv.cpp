@@ -1329,10 +1329,8 @@ int proc_change_master_to(NetworkServer *net, Link *link, const Request &req, Re
 		log_warn("get local ip failed");
 	}
 	if(port == serv->local_port &&
-			 (strcmp(ip_raw, "127.0.0.1") == 0 ||
-			  strcmp(ip_raw, "0.0.0.0") == 0 ||
-			  serv->local_ip == "127.0.0.1" ||
-			  serv->local_ip == ip_raw)){
+			 (strcmp(ip_raw, ip.c_str()) == 0 ||
+			  serv->local_ip == ip)){
 		log_warn("can't slave of myself");
 		resp->push_back("error");
 		resp->push_back("cannot slave of myself");

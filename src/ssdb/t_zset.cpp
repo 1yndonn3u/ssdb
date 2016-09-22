@@ -303,7 +303,6 @@ ZIterator* SSDBImpl::zrrange(const Bytes &key, int64_t start, int64_t stop, uint
 
 ZIterator* SSDBImpl::zrange(const Bytes &key, uint64_t offset, uint64_t limit, uint64_t version){
 	limit = offset + limit;
-	log_info("offset: %" PRIu64 " limit: %"PRId64, offset, limit);
 	ZIterator *it = ziterator(this, key, "", "", "", limit, Iterator::FORWARD, version);
 	it->skip(offset);
 	return it;

@@ -1,6 +1,6 @@
 # SSDB-Evolution - A fast NoSQL database, derived from SSDB(https://github.com/ideawu/ssdb), for storing big list of data
 
-Compared with SSDB, SSDB-Evolution has an more comprehensive and better support for redis commands. Most of the codes are rewrite to achieve the improvements listed below.
+Compared with SSDB, SSDB-Evolution has an more comprehensive and better support for redis commands. Most of the codes are rewrited to achieve the improvements listed below.
 
 ## Improvements
 
