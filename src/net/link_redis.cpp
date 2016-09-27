@@ -136,6 +136,7 @@ static RedisCommand_raw cmds_raw[] = {
 	{STRATEGY_AUTO,		"info",			"info",			REPLY_MULTI_BULK},
 	{STRATEGY_AUTO,		"set_slot",		"set_slot",		REPLY_STATUS},
 	{STRATEGY_AUTO,		"unset_slot",	"unset_slot",	REPLY_STATUS},
+	{STRATEGY_AUTO,		"unlock_db",	"unlock_db",	REPLY_STATUS},
 	{STRATEGY_AUTO,		"key_slot",		"key_slot",		REPLY_INT},
 	{STRATEGY_AUTO,		"dump",		"dump",		REPLY_STATUS},
 	{STRATEGY_AUTO,		"dump_slot",		"dump_slot",		REPLY_STATUS},

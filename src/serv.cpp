@@ -1235,8 +1235,18 @@ int proc_lock_db_with_read_lock(NetworkServer *net, Link *link, const Request &r
 
 int proc_unlock_db(NetworkServer *net, Link *link, const Request &req, Response *resp) {
 	SSDBServer *serv = (SSDBServer *)net->data;
-	serv->global_read_lock = false;
-	resp->reply_bool(1);
+
+	/* enable as a master, start expiration */
+	if (serv->slave->mi->ip.empty()) {
+		serv->global_read_lock = false;
+		serv->expiration->start();
+		resp->push_back("ok");
+		return 0;
+	}
+
+	 /* slave cannot enable write */
+	resp->push_back("error");
+	resp->push_back("Err cannot enable write for slave");
 	return 0;
 }
 
@@ -1392,17 +1402,16 @@ int proc_stop_slave(NetworkServer *net, Link *link, const Request &req, Response
 
 	if (req.size() == 1) {
 		serv->slave->stop();
-		resp->reply_bool(1);
 	} else {
 		int64_t target_seq = req[1].Int64();
 		int64_t last_seq = serv->slave->mi->last_seq;
 		if (last_seq <= target_seq) {
 			serv->slave->failover_seq = target_seq;
 			serv->slave->stop();
-			resp->reply_bool(1);
 		} else {
 			resp->push_back("error");
 			resp->push_back("last seq is greater than target seq");
+			return 0;
 		}
 	}
 
@@ -1415,11 +1424,7 @@ int proc_stop_slave(NetworkServer *net, Link *link, const Request &req, Response
 		return 0;
 	}
 
-	if (serv->slave->mi->ip.empty()) {
-		/* stop slave as a master, start expiration */
-		serv->expiration->start();
-	}
-
+	resp->reply_bool(1);
 	return 0;
 }
 
