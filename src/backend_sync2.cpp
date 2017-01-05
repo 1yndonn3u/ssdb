@@ -252,6 +252,7 @@ finished:
 	log_info("Sync Client quit, %s:%d fd: %d, delete link",
 			link->remote_ip, link->remote_port, link->fd());
 	delete link;
+	client.logfile.close();
 
 	Locking l(&backend->mutex);
 	backend->workers.erase(pthread_self());
@@ -527,7 +528,7 @@ int BackendSync::Client::seek_binlog(uint64_t seq) {
 
 	binlog->incr_inuse(name);
 	this->logfile.filename = binlog->dir() + "/" + name;
-	if (this->logfile.open(O_RDONLY) != 0) {
+	if (this->logfile.open(O_RDONLY, 0644) != 0) {
 		log_error("open file(%s) failed, errno(%d).", name.c_str(), errno);
 		binlog->decr_inuse(name);
 		goto out_of_sync;
@@ -586,7 +587,7 @@ int BackendSync::Client::next_binlog(const std::string &nextfile) {
 		this->logfile.filename = binlog_dir + "/" + nextfile;
 	}
 
-	if (this->logfile.open(O_RDONLY) != 0) {
+	if (this->logfile.open(O_RDONLY, 0644) != 0) {
 		log_error("open file(%s) for read failed, errno(%d).",
 				this->logfile.filename.c_str(), errno);
 		return -1;

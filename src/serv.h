@@ -189,7 +189,6 @@ do { \
 		resp->push_back("server inner error"); \
 		return 0;\
 	}\
-	log_info("new version: %"PRIu64, version); \
 } while(0)
 
 #define CHECK_SLOT_MOVED(slot) \

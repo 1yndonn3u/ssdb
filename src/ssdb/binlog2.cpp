@@ -173,7 +173,7 @@ int SSDB_BinLog::recover() {
 			files.push_back(tmp_files[i]);
 
 			LogFile logfile(filename.c_str());
-			if (logfile.open(O_RDONLY) != 0) {
+			if (logfile.open(O_RDONLY, 0644) != 0) {
 				log_error("open binlog (%s) failed", filename.c_str());
 				return -1;
 			}
@@ -273,12 +273,6 @@ int SSDB_BinLog::new_file() {
 	if (ret < 0) {
 		log_error("create new binlog file(%s) failed, errno(%d).",
 				active_log->filename.c_str(), errno);
-	}
-	ret = active_log->open(O_WRONLY);
-	if (ret < 0) {
-		log_error("open binlog file(%s) failed, errno(%d).",
-				active_log->filename.c_str(), errno);
-		return -1;
 	}
 	writer->bind(active_log);
 

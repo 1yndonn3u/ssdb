@@ -26,11 +26,15 @@ public:
 
 public:
 	int creat(mode_t mode) {
-		return ::creat(filename.c_str(), mode);
+		fd = ::creat(filename.c_str(), mode);
+		if (fd < 0) {
+			return -1;
+		}
+		return 0;
 	}
 
-	int open(int oflag) {
-		fd = ::open(filename.c_str(), oflag);
+	int open(int oflag, mode_t mode) {
+		fd = ::open(filename.c_str(), oflag, mode);
 		if (fd < 0) {
 			return -1;
 		}
