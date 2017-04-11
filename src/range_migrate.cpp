@@ -195,6 +195,7 @@ int RangeMigrate::Client::key_migrate_init() {
 		sync_field = "";
 		sync_qcount = 0;
 		flag = true;
+		break;
 	}
 
 	SAFE_DELETE(iter);
