@@ -484,6 +484,7 @@ do { \
 	} \
 } while(0)
 
+
 int proc_multi_exists(NetworkServer *net, Link *link, const Request &req, Response *resp){
 	SSDBServer * serv = (SSDBServer *)net->data;
 	CHECK_NUM_PARAMS(2);
@@ -514,10 +515,63 @@ action:
 	return 0;
 }
 
+/*
+ * ssdb mset is different from redis mset command:
+ * 1)redis mset command awalys return OK ,it must success
+ * 2)if ssdb mset is failed during a series of sets ,return try again
+ *
+ * if return try again ,maybe partially success ,other fail
+ * Cautious ,it's a uncertain result
+ */
 int proc_multi_set(NetworkServer *net, Link *link, const Request &req, Response *resp){
 	resp->push_back("error");
 	resp->push_back("deprecated");
 	return 0;
+// 	SSDBServer *serv = (SSDBServer *)net->data;
+// 	CHECK_NUM_PARAMS(3);
+// 	CHECK_PARAMS_ODD(req);
+
+// 	int16_t slot = -1;
+// 	CHECK_CROSS_SLOT(req, resp, slot, 1);
+// 	CHECK_SLOT_MOVED(slot);
+// 	ReadLockGuard<RWLock> slot_guard(serv->ssdb_cluster->get_state_lock(slot));
+
+// 	int16_t migrating_slot = 0;
+// 	GET_SLOT_MIGRATING(serv, resp, migrating_slot);
+// 	CHECK_MULTI_ASK(serv, req, resp, slot, 1);
+// 	CHECK_MULTI_ASKING(serv, link, req, resp, slot, 1);
+
+// action:
+// 	for(Request::const_iterator it = req.begin()+1; it != req.end(); it+=2) {
+// 		const Bytes &key = *it;
+// 		const Bytes &value = *(it + 1);
+// 		char op;
+// 		int exists;
+// 		uint64_t version;
+// 		CHECK_META(key, op, version, exists);
+// 		CHECK_DATA_TYPE_KV(op);
+
+// 		if(!exists) {
+// 			NEW_VERSION(key, op, version);
+// 		}
+
+// 		Transaction trans(serv->ssdb, key);
+// 		int ret = serv->ssdb->set(key, value, trans, version);
+// 		if (ret >= 0 && serv->binlog) {
+// 			serv->binlog->write(BinlogType::SYNC, BinlogCommand::K_SET,
+// 					key, value);
+// 		}
+
+// 		if(ret == -1){
+// 			resp->push_back("error");
+// 			resp->push_back("tryagain");
+// 			return 0;
+// 		}
+// 	}
+
+// 	resp->push_back("ok");
+// 	resp->push_back("1");
+// 	return 0;
 }
 
 int proc_multi_del(NetworkServer *net, Link *link, const Request &req, Response *resp){
@@ -559,8 +613,103 @@ action:
 }
 
 int proc_multi_get(NetworkServer *net, Link *link, const Request &req, Response *resp){
-	resp->push_back("error");
-	resp->push_back("deprecated");
+	SSDBServer *serv = (SSDBServer *)net->data;
+	CHECK_NUM_PARAMS(2);
+	
+	serv->ssdb->lock_db();
+	const leveldb::Snapshot *snapshot = serv->ssdb->get_snapshot();
+	serv->ssdb->unlock_db();
+
+	int ret;
+	std::vector<Bytes> key_list;
+	std::vector<std::string> val_list;
+	std::vector<uint64_t> version_list;
+	for(Request::const_iterator it = req.begin()+1; it != req.end(); it++) {
+		const Bytes &key = *it;
+		int flag = 0;
+		char op;
+		int exists;
+		uint64_t version;
+		int16_t migrating_slot = -1;
+		int16_t slot = KEY_HASH_SLOT(key);
+
+		/* meta data*/
+		exists = serv->ssdb->get_version(key, &op, &version, snapshot);
+		if(exists == -1) {
+			resp->clear();
+			resp->push_back("error");
+			resp->push_back("server inner error");
+			goto exception;
+		}
+		if(op != DataType::KV && exists) {
+			resp->clear(); 
+			resp->push_back("error"); 
+			resp->push_back("WRONGTYPE Operation against a key holding the wrong kind of value"); 
+			log_error("WRONGTYPE Operation against a key holding the wrong kind of value"); 
+			goto exception;
+		}
+
+		/*
+		 * node is source
+		 */
+		ret = serv->ssdb_cluster->get_slot_migrating(&migrating_slot);
+		if(ret != 0) {
+			resp->clear();
+			resp->push_back("error");
+			resp->push_back("server inner error");
+			goto exception;
+		}
+		
+		if(!exists && migrating_slot == slot) {
+			resp->clear();
+			resp->push_back("error");
+			resp->push_back("ask");
+			goto exception;
+		}
+
+		/*
+		 * node is target
+		 */
+		ret = serv->ssdb_cluster->test_slot_importing(slot, &flag); \
+		if(ret != 0) { 
+			resp->clear(); 
+			resp->push_back("error"); 
+			resp->push_back("server get slot info failed"); 
+			log_warn("test slot importing failed");	
+			goto exception;
+		} 
+		if(flag) { 
+			if(link->asking) { 
+				link->asking = false; 
+			} else { 
+				resp->clear(); 
+				resp->push_back("error"); 
+				resp->push_back("slot migrating"); 
+				goto exception;
+			}
+		}
+
+		key_list.push_back(*it);
+		version_list.push_back(version);
+	}
+
+	/* action */
+	ret = serv->ssdb->mget(key_list, &val_list, version_list, snapshot);
+	if (ret == 0) {
+		resp->clear();
+		resp->push_back("error");
+		resp->push_back("params error");
+		goto exception;
+	} else if (ret == -1) {
+		resp->clear();
+		resp->push_back("error");
+		resp->push_back("server inner error");
+		goto exception;
+	}
+	resp->reply_list(0, val_list);
+
+exception:
+	serv->ssdb->release_snapshot(snapshot);
 	return 0;
 }
 
