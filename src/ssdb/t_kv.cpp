@@ -58,6 +58,35 @@ int SSDBImpl::get(const Bytes &key, std::string *val, uint64_t version){
 	return 1;
 }
 
+int SSDBImpl::mget(const std::vector<Bytes> &key, std::vector<std::string> *val, std::vector<uint64_t> version, const leveldb::Snapshot *snapshot){
+	leveldb::ReadOptions options = leveldb::ReadOptions();
+	options.snapshot = snapshot;
+
+	if (key.size() != version.size()) {
+		log_error("params error: key.size() != version.size()");
+		return 0;
+	}
+
+	for (int i = 0; i < key.size(); ++i)
+	{
+		std::string value;
+		std::string kkey = encode_kv_key(key[i], version[i]);
+		leveldb::Status s = ldb->Get(options, kkey, &value);
+		if(s.IsNotFound()) {
+			val->push_back("nil");
+			continue;
+		}
+		if(!s.ok()) {
+			log_error("get error: %s", s.ToString().c_str());
+			return -1;
+		} 
+		val->push_back(value);
+	}
+	
+	return 1;
+}
+
+
 KIterator* SSDBImpl::scan(const Bytes &start, const Bytes &end, uint64_t limit){
 	std::string key_start, key_end;
 	key_start = encode_kv_key(start, 0);

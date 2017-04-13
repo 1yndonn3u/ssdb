@@ -90,6 +90,7 @@ public:
 	virtual int getbit(const Bytes &key, int bitoffset, uint64_t version);
 
 	virtual int get(const Bytes &key, std::string *val, uint64_t version);
+	virtual int mget(const std::vector<Bytes> &key, std::vector<std::string> *val, std::vector<uint64_t> version, const leveldb::Snapshot *snapshot);
 	// return (start, end]
 	virtual KIterator* scan(const Bytes &start, const Bytes &end, uint64_t limit);
 	virtual KIterator* rscan(const Bytes &start, const Bytes &end, uint64_t limit);
