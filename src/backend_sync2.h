@@ -57,6 +57,7 @@ public:
 	BackendSync(SSDBServer *owner, SSDBImpl *ssdb, int sync_speed, uint32_t snapshot_timeout=3600);
 	~BackendSync();
 	void proc(const Link *link);                                                   /* sync all */
+	void reset();
 
 	std::vector<std::string> stats();
 };

@@ -23,7 +23,7 @@ BackendSync::BackendSync(SSDBServer *owner, SSDBImpl *ssdb, int sync_speed, uint
 	if (pthread_create(&timer, NULL, &BackendSync::_timer_thread, this) != 0) {
 		log_error("BackendSync start timer thread failed");
 	} else {
-		log_info("start backendsync2 timer thread(%d)", timer);
+		log_info("start backendsync2 timer thread(%lu)", timer);
 	}
 }
 
@@ -58,6 +58,20 @@ std::vector<std::string> BackendSync::stats(){
 		ret.push_back(client->stats());
 	}
 	return ret;
+}
+
+void BackendSync::reset() {
+	thread_quit = true;
+	while(1) {
+		{
+			Locking l(&mutex);
+			if(workers.empty()) {
+				break;
+			}
+		}
+		usleep(50 * 1000);
+	}
+	thread_quit = false;
 }
 
 void BackendSync::proc(const Link *link){
@@ -140,6 +154,10 @@ snapshot:
 			usleep((data_size_mb/backend->sync_speed) * 1000 * 1000);
 		}
 	} // end while
+
+	if (backend->thread_quit) {
+		goto finished;
+	}
 
 	log_info("finished transfer snapshot seq(%" PRIu64 ")", client.last_seq);
 
@@ -345,7 +363,7 @@ void BackendSync::Client::init(){
 			link->fd(),
 			last_seq, hexmem(last_key.data(), last_key.size()).c_str()
 			);
-		this->reset();
+		this->status = Client::COPY;
 	}else{
 		log_info("[%s] %s:%d fd: %d, copy recover, seq: %" PRIu64 ", key: '%s'",
 			type,
@@ -494,8 +512,8 @@ int BackendSync::Client::copy(){
 		ret = 1;
 
 		LogEvent event(this->last_seq, BinlogType::COPY, BinlogCommand::RAW, key, val);
-		log_trace("fd: %d, key:%s value: %s event:%s", link->fd(), 
-				hexmem(key.data(), key.size()).c_str(), hexmem(val.data(), val.size()).c_str(), 
+		log_trace("fd: %d, key:%s value: %s event:%s", link->fd(),
+				hexmem(key.data(), key.size()).c_str(), hexmem(val.data(), val.size()).c_str(),
 				hexmem(event.repr().data(), event.repr().size()).c_str());
 		link->send(event.repr());
 	}

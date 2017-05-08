@@ -380,6 +380,7 @@ SSDBServer::SSDBServer(SSDB *ssdb, SSDB *meta, Config *conf,
 	this->config = conf;
 
 	net->data = this;
+	this->net = net;
 	this->reg_procs(net);
 
 	int sync_speed = conf->get_num("replication.sync_speed");
@@ -591,14 +592,29 @@ int proc_purge_logs_before(NetworkServer *net, Link *link, const Request &req, R
 }
 
 int proc_flushdb(NetworkServer *net, Link *link, const Request &req, Response *resp){
-	SSDBServer *serv = (SSDBServer *)net->data;
+	/*SSDBServer *serv = (SSDBServer *)net->data;
+	CHECK_READ_ONLY;
+
 	if(serv->slaves.size() > 0 || serv->backend_sync->stats().size() > 0){
 		resp->push_back("error");
 		resp->push_back("flushdb is not allowed when replication is in use!");
 		return 0;
 	}
+
+	serv->backend_sync->reset();
+
 	serv->ssdb->flushdb();
-	resp->push_back("ok");
+
+	if (serv->binlog->reset() != 0) {
+		log_error("reset binlog failed");
+		resp->push_back("error");
+		resp->push_back("reset binlog failed");
+		return 0;
+	}
+
+	resp->push_back("ok");*/
+	resp->push_back("error");
+	resp->push_back("deprecated");
 	return 0;
 }
 
@@ -1244,7 +1260,7 @@ int proc_unlock_db(NetworkServer *net, Link *link, const Request &req, Response 
 		return 0;
 	}
 
-	 /* slave cannot enable write */
+	/* slave cannot enable write */
 	resp->push_back("error");
 	resp->push_back("Err cannot enable write for slave");
 	return 0;

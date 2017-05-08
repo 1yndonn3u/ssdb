@@ -57,6 +57,8 @@ SSDB* SSDB::open(const Options &opt, const std::string &dir){
 
 	leveldb::Status status;
 
+	ssdb->dir = dir;
+
 	status = leveldb::DB::Open(ssdb->options, dir, &ssdb->ldb);
 	if(!status.ok()){
 		log_error("open db failed: %s", status.ToString().c_str());
@@ -117,37 +119,25 @@ leveldb::Options SSDBImpl::get_options() {
 int SSDBImpl::flushdb(){
 	this->lock_db();
 
-	int ret = 0;
-	bool stop = false;
-	while(!stop){
-		leveldb::Iterator *it;
-		leveldb::ReadOptions iterate_options;
-		iterate_options.fill_cache = false;
-		leveldb::WriteOptions write_opts;
+	delete ldb;
 
-		it = ldb->NewIterator(iterate_options);
-		it->SeekToFirst();
-		for(int i=0; i<10000; i++){
-			if(!it->Valid()){
-				stop = true;
-				break;
-			}
-			//log_debug("%s", hexmem(it->key().data(), it->key().size()).c_str());
-			leveldb::Status s = ldb->Delete(write_opts, it->key());
-			if(!s.ok()){
-				log_error("del error: %s", s.ToString().c_str());
-				stop = true;
-				ret = -1;
-				break;
-			}
-			it->Next();
-		}
-		delete it;
+	leveldb::Status status = leveldb::DestroyDB(dir, options);
+	if (!status.ok()) {
+		log_error("destroy db %s failed: %s", dir.c_str(), status.ToString().c_str());
+		this->unlock_db();
+		return -1;
+	}
+
+	status = leveldb::DB::Open(options, dir, &ldb);
+	if (!status.ok()) {
+		log_error("open db %s failed: %s", dir.c_str(), status.ToString().c_str());
+		this->unlock_db();
+		return -1;
 	}
 
 	this->unlock_db();
 
-	return ret;
+	return 0;
 }
 
 Iterator* SSDBImpl::iterator(const std::string &start, const std::string &end, uint64_t limit, const leveldb::Snapshot *snapshot){

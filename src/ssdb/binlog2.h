@@ -62,6 +62,8 @@ private:
 		pthread_mutex_unlock(&mutex);
 	}
 
+	int clean();
+
 public:
 	SSDB_BinLog(SSDB *meta, const std::string &dir, uint64_t max_binlog_size=0, bool sync=false, time_t purge_span = 0);
 	~SSDB_BinLog();
@@ -71,6 +73,7 @@ public:
 	int new_file();
 	int rotate();
 	int stop();
+	int reset();
 
 	int write_impl(LogEvent *event);
 	int write_impl(LogEventBatch *batch);

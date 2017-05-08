@@ -648,6 +648,18 @@ int SSDBCluster::init_slot() {
 	return 0;
 }
 
+int SSDBCluster::reset_slot() {
+	memset(slots_map, 0, sizeof(slots_map));
+	std::string key = SSDB_SLOTS_MAP_KEY;
+	int16_t reserve_slot = -1;
+	key.append((char*)&reserve_slot, sizeof(reserve_slot));
+	int ret = server->ssdb->raw_del(key);
+	if (ret == -1) {
+		return -1;
+	}
+	return 0;
+}
+
 std::vector<int> SSDBCluster::slot_range() {
 	std::vector<int> range;
 	int end = -1;
@@ -663,7 +675,7 @@ std::vector<int> SSDBCluster::slot_range() {
 			if(end != -1) {
 				range.push_back(end);
 				end = -1;
-			}	
+			}
 		}
 	}
 	if(end != -1) {

@@ -14,6 +14,8 @@ found in the LICENSE file.
 #include "proc.h"
 #include "worker.h"
 
+#include "../util/spin_lock.h"
+
 class Link;
 class Config;
 class IpFilter;
@@ -43,6 +45,7 @@ private:
 	int num_writers;
 	ProcWorkerPool *writer;
 	ProcWorkerPool *reader;
+	RWLock proc_mutex;
 
 	NetworkServer();
 
@@ -66,6 +69,8 @@ public:
 	static NetworkServer* init(const char *conf_file, int num_readers=-1, int num_writers=-1);
 	static NetworkServer* init(const Config &conf, int num_readers=-1, int num_writers=-1);
 	void serve();
+	void pause();
+	void proceed();
 };
 
 

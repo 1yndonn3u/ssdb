@@ -43,14 +43,14 @@ void ExpirationHandler::start(){
 		log_error("can't create thread: %s", strerror(err));
 		tid = 0;
 	}
-	log_info("expiration thread start tid: %d.", tid);
+	log_info("expiration thread start tid: %lu.", tid);
 }
 
 void ExpirationHandler::stop(){
 	if (tid != 0) {
 		thread_quit = true;
 		pthread_join(tid, NULL);
-		log_info("expiration thread stop tid: %d.", tid);
+		log_info("expiration thread stop tid: %lu.", tid);
 		tid = 0;
 	} else {
 		log_warn("expiration thread is not running, can't stop any");

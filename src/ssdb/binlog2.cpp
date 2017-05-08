@@ -31,7 +31,7 @@ SSDB_BinLog::SSDB_BinLog(SSDB *meta, const std::string &dir, uint64_t max_binlog
 	this->last_seq = 0;
 	this->sync_binlog = sync;
 
-	this->active_log = new LogFile;
+	this->active_log = new LogFile();
 	this->writer = new LogWriter(BINLOG_WRITE_BUFFER_SIZE);
 
 	this->max_binlog_size = max_binlog_size;
@@ -469,6 +469,27 @@ int SSDB_BinLog::stop() {
 	active_log->close();
 
 	return 0;
+}
+
+int SSDB_BinLog::clean() {
+	std::string logname;
+	Transaction trans(this->meta, BINLOG_FILE_LIST);
+	return this->meta->qclear(BINLOG_FILE_LIST, trans, 0);
+}
+
+int SSDB_BinLog::reset() {
+	stop();
+	last_seq = 0;
+	save_last_seq();
+
+	if (clean() < 0) {
+		log_error("clean binlog failed");
+		return -1;
+	}
+
+	this->next_file_num = 1;
+
+	return new_file();
 }
 
 void SSDB_BinLog::incr_inuse(const std::string &binlog) {

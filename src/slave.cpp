@@ -162,7 +162,7 @@ int Slave::connect(){
 	this->version = 0;
 
 	{
-		if (++connect_retry % 50 == 1) {
+		if (connect_retry++ % 50 == 1) {
 			log_info("connect retry %d connecting to master at %s:%d...", connect_retry, ip, port);
 		}
 
@@ -285,7 +285,7 @@ void* Slave::_run_thread(void *arg){
 					break;
 				}
 			}
-		} // end whit (1)
+		} // end while (1)
 	} // end while (!this->quit-thread)
 
 	slave->running = false;
@@ -394,13 +394,40 @@ int Slave::proc_noop(const LogEvent &event, const std::vector<Bytes> &req){
 int Slave::proc_copy(const LogEvent &event, const std::vector<Bytes> &req) {
 	switch(event.cmd()){
 		case BinlogCommand::BEGIN:
-			log_info("copy begin");
-			log_info("start flushdb...");
+			/* disbale workers */
+			log_info("full sync detected, disable server...");
+			serv->net->pause();
+
+			/* stop all backend sync threads */
+			log_info("reset sync ...");
+			serv->backend_sync->reset();
+
+			log_info("flushdb...");
+			/* flush db */
 			serv->ssdb->flushdb();
-			log_info("end flushdb.");
+
+			log_info("reset binlog...");
+			/* reset binlog */
+			if (serv->binlog->reset() != 0) {
+				log_error("reset binlog failed");
+				return -1;
+			}
+
+			/* reset replication info */
+			log_info("reset replication info...");
 			this->mi->last_seq = 0;
 			this->mi->last_key = "";
 			this->save_progress(true);
+
+			/* reset slot info */
+			log_info("reset slot ...");
+			serv->ssdb_cluster->reset_slot();
+
+			/* enable workers */
+			log_info("enable server...");
+			serv->net->proceed();
+
+			log_info("copy begin");
 			break;
 		case BinlogCommand::END:
 			log_info("copy end, copy_count=%" PRIu64 ", last_seq=%" PRIu64 ", seq=%" PRIu64,
@@ -412,7 +439,7 @@ int Slave::proc_copy(const LogEvent &event, const std::vector<Bytes> &req) {
 			break;
 		default:
 			if(++copy_count % 1000 == 1){
-				log_info("copy_count=%" PRIu64 ", last_seq=%" PRIu64 ", seq=%" PRIu64 "",
+				log_debug("copy_count=%" PRIu64 ", last_seq=%" PRIu64 ", seq=%" PRIu64 "",
 					copy_count, this->mi->last_seq, event.seq());
 			}
 			return proc_sync(event, req);

@@ -17,6 +17,8 @@ found in the LICENSE file.
 #include <set>
 #include <sys/prctl.h>
 
+#include "spin_lock.h"
+
 #ifndef PR_SET_NAME
 #define PR_SET_NAME 15
 #endif
@@ -159,6 +161,7 @@ class WorkerPool{
 		int num_workers;
 		std::vector<pthread_t> tids;
 		bool started;
+		RWLock mutex;
 
 		struct run_arg{
 			int id;
@@ -175,6 +178,8 @@ class WorkerPool{
 
 		int start(int num_workers);
 		int stop();
+		void pause();
+		void proceed();
 
 		int push(JOB job);
 		int pop(JOB *job);
@@ -378,6 +383,7 @@ void* WorkerPool<W, JOB>::_run_worker(void *arg){
 			::exit(0);
 			break;
 		}
+		ReadLockGuard<RWLock> guard(tp->mutex);
 		worker->proc(&job);
 		if(tp->results.push(job) == -1){
 			fprintf(stderr, "results.push error\n");
@@ -425,6 +431,15 @@ int WorkerPool<W, JOB>::stop(){
 	return 0;
 }
 
+template<class W, class JOB>
+void WorkerPool<W, JOB>::pause() {
+	mutex.Lock(WRITE_LOCK);
+}
+
+template<class W, class JOB>
+void WorkerPool<W, JOB>::proceed() {
+	mutex.Unlock(WRITE_LOCK);
+}
 
 
 #if 0

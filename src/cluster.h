@@ -194,6 +194,7 @@ public:
 	int test_slot(int16_t slot, int *flag);
 	std::vector<int> slot_range();
 	int init_slot();
+	int reset_slot();
 
 private:
 	/* state */

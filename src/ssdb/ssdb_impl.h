@@ -36,6 +36,7 @@ private:
 	uint64_t num_version_update;         /* numbers of version updates since last record */
 	int inited;
 	std::string name;
+	std::string dir;
 
 	DBKeyLock *dblocks;
 

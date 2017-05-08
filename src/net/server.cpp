@@ -213,7 +213,7 @@ void NetworkServer::serve(){
 		// status report
 		if((uint32_t)(g_ticks - last_ticks) >= STATUS_REPORT_TICKS){
 			last_ticks = g_ticks;
-			log_info("server running, links: %d", this->link_count);
+			log_debug("server running, links: %d", this->link_count);
 		}
 
 		ready_dict.swap(tmp_dict);
@@ -311,6 +311,18 @@ void NetworkServer::serve(){
 			}
 		} // end foreach ready link
 	}
+}
+
+void NetworkServer::pause() {
+	writer->pause();
+	reader->pause();
+	proc_mutex.Lock(WRITE_LOCK);
+}
+
+void NetworkServer::proceed() {
+	writer->proceed();
+	reader->proceed();
+	proc_mutex.Unlock(WRITE_LOCK);
 }
 
 Link* NetworkServer::accept_link(){
@@ -463,6 +475,8 @@ void NetworkServer::proc(ProcJob *job){
 		}
 
 		proc_t p = cmd->proc;
+
+		ReadLockGuard<RWLock> guard(proc_mutex);
 		job->time_wait = 1000 * (millitime() - job->stime);
 		job->result = (*p)(this, job->link, *req, &resp);
 		job->time_proc = 1000 * (millitime() - job->stime) - job->time_wait;

@@ -38,6 +38,7 @@ public:
 	std::vector<Slave *> slaves;
 	Cluster *cluster; /* deprecated, use SSDBCluster instead */
 	SSDBCluster *ssdb_cluster;
+	NetworkServer *net;
 	Config *config;
 	RWLock config_lock;
 
