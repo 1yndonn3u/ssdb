@@ -641,7 +641,11 @@ int proc_multi_get(NetworkServer *net, Link *link, const Request &req, Response 
 			resp->push_back("server inner error");
 			goto exception;
 		}
+<<<<<<< HEAD
 		if(op != DataType::KV && exists) {
+=======
+		if(op != DataType::KV) {
+>>>>>>> 75206ee21ed52498589fb3a3157ce8a99ec1876c
 			resp->clear(); 
 			resp->push_back("error"); 
 			resp->push_back("WRONGTYPE Operation against a key holding the wrong kind of value"); 

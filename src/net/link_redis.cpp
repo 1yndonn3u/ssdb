@@ -527,7 +527,8 @@ int RedisLink::send_resp(Buffer *output, const std::vector<std::string> &resp){
 		output->append("+OK\r\n");
 		return 0;
 	}
-	if(req_desc->strategy == STRATEGY_MGET || req_desc->strategy == STRATEGY_HMGET){
+	// if(req_desc->strategy == STRATEGY_MGET || req_desc->strategy == STRATEGY_HMGET){
+	if(req_desc->strategy == STRATEGY_HMGET){
 		if(resp.size() % 2 != 1){
 			output->append("*0");
 			//log_error("bad response for multi_(h)get");
