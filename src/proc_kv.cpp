@@ -615,7 +615,7 @@ action:
 int proc_multi_get(NetworkServer *net, Link *link, const Request &req, Response *resp){
 	SSDBServer *serv = (SSDBServer *)net->data;
 	CHECK_NUM_PARAMS(2);
-	
+
 	serv->ssdb->lock_db();
 	const leveldb::Snapshot *snapshot = serv->ssdb->get_snapshot();
 	serv->ssdb->unlock_db();
@@ -642,10 +642,10 @@ int proc_multi_get(NetworkServer *net, Link *link, const Request &req, Response 
 			goto exception;
 		}
 		if(op != DataType::KV && exists) {
-			resp->clear(); 
-			resp->push_back("error"); 
-			resp->push_back("WRONGTYPE Operation against a key holding the wrong kind of value"); 
-			log_error("WRONGTYPE Operation against a key holding the wrong kind of value"); 
+			resp->clear();
+			resp->push_back("error");
+			resp->push_back("WRONGTYPE Operation against a key holding the wrong kind of value");
+			log_error("WRONGTYPE Operation against a key holding the wrong kind of value");
 			goto exception;
 		}
 
@@ -659,7 +659,7 @@ int proc_multi_get(NetworkServer *net, Link *link, const Request &req, Response 
 			resp->push_back("server inner error");
 			goto exception;
 		}
-		
+
 		if(!exists && migrating_slot == slot) {
 			resp->clear();
 			resp->push_back("error");
@@ -671,20 +671,20 @@ int proc_multi_get(NetworkServer *net, Link *link, const Request &req, Response 
 		 * node is target
 		 */
 		ret = serv->ssdb_cluster->test_slot_importing(slot, &flag); \
-		if(ret != 0) { 
-			resp->clear(); 
-			resp->push_back("error"); 
-			resp->push_back("server get slot info failed"); 
-			log_warn("test slot importing failed");	
+		if(ret != 0) {
+			resp->clear();
+			resp->push_back("error");
+			resp->push_back("server get slot info failed");
+			log_warn("test slot importing failed");
 			goto exception;
-		} 
-		if(flag) { 
-			if(link->asking) { 
-				link->asking = false; 
-			} else { 
-				resp->clear(); 
-				resp->push_back("error"); 
-				resp->push_back("slot migrating"); 
+		}
+		if(flag) {
+			if(link->asking) {
+				link->asking = false;
+			} else {
+				resp->clear();
+				resp->push_back("error");
+				resp->push_back("slot migrating");
 				goto exception;
 			}
 		}

@@ -78,11 +78,11 @@ int SSDBImpl::mget(const std::vector<Bytes> &key, std::vector<std::string> *val,
 		if(!s.ok()) {
 			log_error("get error: %s", s.ToString().c_str());
 			return -1;
-		} 
+		}
 		val->push_back(key[i].String());
 		val->push_back(value);
 	}
-	
+
 	return 1;
 }
 
