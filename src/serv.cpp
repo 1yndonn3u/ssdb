@@ -966,6 +966,12 @@ int proc_flag_normal(NetworkServer *net, Link *link, const Request &req, Respons
 	SSDBServer *serv = (SSDBServer *)net->data;
 	CHECK_NUM_PARAMS(2);
 	int16_t slot = req[1].Int();
+	if(slot < 0) {
+		resp->push_back("error");
+		resp->push_back("invalidate slot");
+		return 0;
+	}
+
 	int ret = serv->ssdb_cluster->flag_normal(slot);
 	if(ret == 0) {
 		resp->push_back("ok");
