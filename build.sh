@@ -81,6 +81,7 @@ case "$TARGET_OS" in
 		if [ ! -f Makefile ]; then
 			echo ""
 			echo "##### building jemalloc... #####"
+			sh autogen.sh
 			./configure
 			make
 			echo "##### building jemalloc finished #####"
