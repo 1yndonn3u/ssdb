@@ -116,7 +116,7 @@ int ExpirationHandler::del_ttl(const Bytes &key){
 	return 0;
 }
 
-int64_t ExpirationHandler::get_ttl(const Bytes &key, const leveldb::Snapshot *snapshot){
+int64_t ExpirationHandler::get_ttl(const Bytes &key, const rocksdb::Snapshot *snapshot){
 	std::string score;
 	uint32_t idx = string_hash(key) >> (32-EXPIR_CON_DEGREE);
 	if(ssdb->zget(this->list_name[idx], key, &score, 0, snapshot) == 1){

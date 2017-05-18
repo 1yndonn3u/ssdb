@@ -4,10 +4,11 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 */
 #include "ssdb_impl.h"
-#include "leveldb/env.h"
-#include "leveldb/iterator.h"
-#include "leveldb/cache.h"
-#include "leveldb/filter_policy.h"
+#include "rocksdb/env.h"
+#include "rocksdb/iterator.h"
+#include "rocksdb/cache.h"
+#include "rocksdb/filter_policy.h"
+#include "rocksdb/table.h"
 
 #include "iterator.h"
 #include "comparator.h"
@@ -28,12 +29,6 @@ SSDBImpl::~SSDBImpl(){
 	if(ldb){
 		delete ldb;
 	}
-	if(options.block_cache){
-		delete options.block_cache;
-	}
-	if(options.filter_policy){
-		delete options.filter_policy;
-	}
 	if (dblocks) {
 		delete dblocks;
 	}
@@ -43,23 +38,27 @@ SSDB* SSDB::open(const Options &opt, const std::string &dir){
 	SSDBImpl *ssdb = new SSDBImpl();
 	ssdb->options.create_if_missing = true;
 	ssdb->options.max_open_files = opt.max_open_files;
-	ssdb->options.filter_policy = leveldb::NewBloomFilterPolicy(10);
-	ssdb->options.block_cache = leveldb::NewLRUCache(opt.cache_size * 1048576);
-	ssdb->options.block_size = opt.block_size * 1024;
+
+	rocksdb::BlockBasedTableOptions table_options;
+	std::shared_ptr<rocksdb::Cache> cache = rocksdb::NewLRUCache(opt.cache_size * 1048576);
+	table_options.block_cache = cache;
+	table_options.block_size = opt.block_size * 1024;
+	//std::shared_ptr<const rocksdb::FilterPolicy> filter_policy = rocksdb::NewBloomFilterPolicy(10, false);
+	table_options.filter_policy = std::shared_ptr<const rocksdb::FilterPolicy>(rocksdb::NewBloomFilterPolicy(10, false));
+
 	ssdb->options.write_buffer_size = opt.write_buffer_size * 1024 * 1024;
-	ssdb->options.compaction_speed = opt.compaction_speed;
 	ssdb->options.comparator = SlotBytewiseComparatorImpl::getComparator();
 	if(opt.compression == "yes"){
-		ssdb->options.compression = leveldb::kSnappyCompression;
+		ssdb->options.compression = rocksdb::kSnappyCompression;
 	}else{
-		ssdb->options.compression = leveldb::kNoCompression;
+		ssdb->options.compression = rocksdb::kNoCompression;
 	}
 
-	leveldb::Status status;
+	rocksdb::Status status;
 
 	ssdb->dir = dir;
 
-	status = leveldb::DB::Open(ssdb->options, dir, &ssdb->ldb);
+	status = rocksdb::DB::Open(ssdb->options, dir, &ssdb->ldb);
 	if(!status.ok()){
 		log_error("open db failed: %s", status.ToString().c_str());
 		goto err;
@@ -112,7 +111,7 @@ int SSDBImpl::init(const std::string &name) {
 	return 1;
 }
 
-leveldb::Options SSDBImpl::get_options() {
+rocksdb::Options SSDBImpl::get_options() {
 	return options;
 }
 
@@ -121,14 +120,14 @@ int SSDBImpl::flushdb(){
 
 	delete ldb;
 
-	leveldb::Status status = leveldb::DestroyDB(dir, options);
+	rocksdb::Status status = rocksdb::DestroyDB(dir, options);
 	if (!status.ok()) {
 		log_error("destroy db %s failed: %s", dir.c_str(), status.ToString().c_str());
 		this->unlock_db();
 		return -1;
 	}
 
-	status = leveldb::DB::Open(options, dir, &ldb);
+	status = rocksdb::DB::Open(options, dir, &ldb);
 	if (!status.ok()) {
 		log_error("open db %s failed: %s", dir.c_str(), status.ToString().c_str());
 		this->unlock_db();
@@ -140,9 +139,9 @@ int SSDBImpl::flushdb(){
 	return 0;
 }
 
-Iterator* SSDBImpl::iterator(const std::string &start, const std::string &end, uint64_t limit, const leveldb::Snapshot *snapshot){
-	leveldb::Iterator *it;
-	leveldb::ReadOptions iterate_options;
+Iterator* SSDBImpl::iterator(const std::string &start, const std::string &end, uint64_t limit, const rocksdb::Snapshot *snapshot){
+	rocksdb::Iterator *it;
+	rocksdb::ReadOptions iterate_options;
 	iterate_options.fill_cache = false;
 	if (snapshot) {
 		iterate_options.snapshot = snapshot;
@@ -155,9 +154,9 @@ Iterator* SSDBImpl::iterator(const std::string &start, const std::string &end, u
 	return new Iterator(it, end, limit);
 }
 
-Iterator* SSDBImpl::rev_iterator(const std::string &start, const std::string &end, uint64_t limit, const leveldb::Snapshot *snapshot){
-	leveldb::Iterator *it;
-	leveldb::ReadOptions iterate_options;
+Iterator* SSDBImpl::rev_iterator(const std::string &start, const std::string &end, uint64_t limit, const rocksdb::Snapshot *snapshot){
+	rocksdb::Iterator *it;
+	rocksdb::ReadOptions iterate_options;
 	iterate_options.fill_cache = false;
 	if (snapshot) {
 		iterate_options.snapshot = snapshot;
@@ -175,8 +174,8 @@ Iterator* SSDBImpl::rev_iterator(const std::string &start, const std::string &en
 /* raw operates */
 
 int SSDBImpl::raw_set(const Bytes &key, const Bytes &val){
-	leveldb::WriteOptions write_opts;
-	leveldb::Status s = ldb->Put(write_opts, slice(key), slice(val));
+	rocksdb::WriteOptions write_opts;
+	rocksdb::Status s = ldb->Put(write_opts, slice(key), slice(val));
 	if(!s.ok()){
 		log_error("set error: %s", s.ToString().c_str());
 		return -1;
@@ -185,8 +184,8 @@ int SSDBImpl::raw_set(const Bytes &key, const Bytes &val){
 }
 
 int SSDBImpl::raw_del(const Bytes &key){
-	leveldb::WriteOptions write_opts;
-	leveldb::Status s = ldb->Delete(write_opts, slice(key));
+	rocksdb::WriteOptions write_opts;
+	rocksdb::Status s = ldb->Delete(write_opts, slice(key));
 	if(!s.ok()){
 		log_error("del error: %s", s.ToString().c_str());
 		return -1;
@@ -194,13 +193,13 @@ int SSDBImpl::raw_del(const Bytes &key){
 	return 1;
 }
 
-int SSDBImpl::raw_get(const Bytes &key, std::string *val, const leveldb::Snapshot *snapshot){
-	leveldb::ReadOptions opts;
+int SSDBImpl::raw_get(const Bytes &key, std::string *val, const rocksdb::Snapshot *snapshot){
+	rocksdb::ReadOptions opts;
 	if(snapshot) {
 		opts.snapshot = snapshot;
 	}
 	//opts.fill_cache = false;
-	leveldb::Status s = ldb->Get(opts, slice(key), val);
+	rocksdb::Status s = ldb->Get(opts, slice(key), val);
 	if(s.IsNotFound()){
 		return 0;
 	}
@@ -214,37 +213,37 @@ int SSDBImpl::raw_get(const Bytes &key, std::string *val, const leveldb::Snapsho
 uint64_t SSDBImpl::size(){
 	std::string s = "A";
 	std::string e(1, 'z' + 1);
-	leveldb::Range ranges[1];
-	ranges[0] = leveldb::Range(s, e);
+	rocksdb::Range ranges[1];
+	ranges[0] = rocksdb::Range(s, e);
 	uint64_t sizes[1];
 	ldb->GetApproximateSizes(ranges, 1, sizes);
 	return sizes[0];
 }
 
-uint64_t SSDBImpl::leveldbfilesize(){
-	uint64_t size;
-	ldb->GetDbSize(&size);
-	return size;
+uint64_t SSDBImpl::dbfilesize(){
+	//uint64_t size;
+	//ldb->GetDbSize(&size);
+	return 0;
 }
 
 std::vector<std::string> SSDBImpl::info(){
-	//  "leveldb.num-files-at-level<N>" - return the number of files at level <N>,
+	//  "rocksdb.num-files-at-level<N>" - return the number of files at level <N>,
 	//     where <N> is an ASCII representation of a level number (e.g. "0").
-	//  "leveldb.stats" - returns a multi-line string that describes statistics
+	//  "rocksdb.stats" - returns a multi-line string that describes statistics
 	//     about the internal operation of the DB.
-	//  "leveldb.sstables" - returns a multi-line string that describes all
+	//  "rocksdb.sstables" - returns a multi-line string that describes all
 	//     of the sstables that make up the db contents.
 	std::vector<std::string> info;
 	std::vector<std::string> keys;
 	/*
 	for(int i=0; i<7; i++){
 		char buf[128];
-		snprintf(buf, sizeof(buf), "leveldb.num-files-at-level%d", i);
+		snprintf(buf, sizeof(buf), "rocksdb.num-files-at-level%d", i);
 		keys.push_back(buf);
 	}
 	*/
-	keys.push_back("leveldb.stats");
-	//keys.push_back("leveldb.sstables");
+	keys.push_back("rocksdb.stats");
+	//keys.push_back("rocksdb.sstables");
 
 	for(size_t i=0; i<keys.size(); i++){
 		std::string key = keys[i];
@@ -404,11 +403,11 @@ int SSDBImpl::key_range(std::vector<std::string> *keys){
 }
 
 
-const leveldb::Snapshot *SSDBImpl::get_snapshot() {
+const rocksdb::Snapshot *SSDBImpl::get_snapshot() {
 	return this->ldb->GetSnapshot();
 }
 
-void SSDBImpl::release_snapshot(const leveldb::Snapshot *snapshot) {
+void SSDBImpl::release_snapshot(const rocksdb::Snapshot *snapshot) {
 	this->ldb->ReleaseSnapshot(snapshot);
 }
 
@@ -428,7 +427,7 @@ void SSDBImpl::unlock_db() {
 	this->dblocks->unlock_db();
 }
 
-leveldb::Status SSDBImpl::write(const leveldb::WriteOptions &options, leveldb::WriteBatch *batch) {
+rocksdb::Status SSDBImpl::write(const rocksdb::WriteOptions &options, rocksdb::WriteBatch *batch) {
 	return ldb->Write(options, batch);
 }
 
@@ -466,7 +465,7 @@ int SSDBImpl::new_version(const Bytes &key, char t, uint64_t *version) {
 	return 1;
 }
 
-int SSDBImpl::get_version(const Bytes &key, char *t, uint64_t *version, const leveldb::Snapshot *snapshot) {
+int SSDBImpl::get_version(const Bytes &key, char *t, uint64_t *version, const rocksdb::Snapshot *snapshot) {
 	std::string k = encode_version_key(key);
 	std::string v;
 	int ret = this->raw_get(k, &v, snapshot);

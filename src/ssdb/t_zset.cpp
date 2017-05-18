@@ -155,7 +155,7 @@ int SSDBImpl::zget(const Bytes &key,
 	   	const Bytes &field, 
 		std::string *score, 
 		uint64_t version, 
-		const leveldb::Snapshot *snapshot){
+		const rocksdb::Snapshot *snapshot){
 	std::string zkey = encode_zset_key(key, field, version);
 	return this->raw_get(zkey, score, snapshot);
 }

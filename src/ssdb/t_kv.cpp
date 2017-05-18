@@ -47,7 +47,7 @@ int SSDBImpl::incr(const Bytes &key, int64_t by, int64_t *new_val, Transaction &
 
 int SSDBImpl::get(const Bytes &key, std::string *val, uint64_t version){
 	std::string kkey = encode_kv_key(key, version);
-	leveldb::Status s = ldb->Get(leveldb::ReadOptions(), kkey, val);
+	rocksdb::Status s = ldb->Get(rocksdb::ReadOptions(), kkey, val);
 	if(s.IsNotFound()) {
 		return 0;
 	}
@@ -58,8 +58,8 @@ int SSDBImpl::get(const Bytes &key, std::string *val, uint64_t version){
 	return 1;
 }
 
-int SSDBImpl::mget(const std::vector<Bytes> &key, std::vector<std::string> *val, std::vector<uint64_t> version, const leveldb::Snapshot *snapshot){
-	leveldb::ReadOptions options = leveldb::ReadOptions();
+int SSDBImpl::mget(const std::vector<Bytes> &key, std::vector<std::string> *val, std::vector<uint64_t> version, const rocksdb::Snapshot *snapshot){
+	rocksdb::ReadOptions options = rocksdb::ReadOptions();
 	options.snapshot = snapshot;
 
 	if (key.size() != version.size()) {
@@ -71,7 +71,7 @@ int SSDBImpl::mget(const std::vector<Bytes> &key, std::vector<std::string> *val,
 	{
 		std::string value;
 		std::string kkey = encode_kv_key(key[i], version[i]);
-		leveldb::Status s = ldb->Get(options, kkey, &value);
+		rocksdb::Status s = ldb->Get(options, kkey, &value);
 		if(s.IsNotFound()) {
 			continue;
 		}

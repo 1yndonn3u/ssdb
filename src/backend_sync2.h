@@ -68,7 +68,7 @@ struct BackendSync::CopySnapshot {
 		ACTIVE = 2,
 	};
 
-	const leveldb::Snapshot *snapshot;
+	const rocksdb::Snapshot *snapshot;
 	int status;
 	time_t last_active;
 	uint64_t binlog_seq;

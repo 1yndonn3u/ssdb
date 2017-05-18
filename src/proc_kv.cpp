@@ -617,7 +617,7 @@ int proc_multi_get(NetworkServer *net, Link *link, const Request &req, Response 
 	CHECK_NUM_PARAMS(2);
 
 	serv->ssdb->lock_db();
-	const leveldb::Snapshot *snapshot = serv->ssdb->get_snapshot();
+	const rocksdb::Snapshot *snapshot = serv->ssdb->get_snapshot();
 	serv->ssdb->unlock_db();
 
 	int ret;

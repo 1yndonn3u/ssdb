@@ -16,7 +16,7 @@ found in the LICENSE file.
 #include "net/link.h"
 #include "util/thread.h"
 
-namespace leveldb{
+namespace rocksdb{
 	class Snapshot;
 }
 
@@ -97,7 +97,7 @@ struct BackendSync::CopySnapshot {
 		ACTIVE = 2,
 	};
 
-	const leveldb::Snapshot *snapshot;
+	const rocksdb::Snapshot *snapshot;
 	int status;
 	time_t last_active;
 	uint64_t binlog_seq;

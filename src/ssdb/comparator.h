@@ -1,23 +1,23 @@
 #ifndef SSDB_COMPARATOR_H_
 #define SSDB_COMPARATOR_H_
 
-#include "leveldb/slice.h"
-#include "leveldb/comparator.h"
+#include "rocksdb/slice.h"
+#include "rocksdb/comparator.h"
 
-class SlotBytewiseComparatorImpl : public leveldb::Comparator {
+class SlotBytewiseComparatorImpl : public rocksdb::Comparator {
 public:
 	virtual const char *Name() const;
 
-	virtual int Compare(const leveldb::Slice &a, const leveldb::Slice &b) const;
+	virtual int Compare(const rocksdb::Slice &a, const rocksdb::Slice &b) const;
 
-	virtual void FindShortestSeparator(std::string *start, const leveldb::Slice &limit) const;
+	virtual void FindShortestSeparator(std::string *start, const rocksdb::Slice &limit) const;
 
 	virtual void FindShortSuccessor(std::string *key) const;
 
-	static leveldb::Comparator *getComparator();
+	static rocksdb::Comparator *getComparator();
 private:
 	SlotBytewiseComparatorImpl(){};
-	static leveldb::Comparator *ins;
+	static rocksdb::Comparator *ins;
 };
 
 #endif

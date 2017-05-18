@@ -37,11 +37,11 @@ static int64_t incr_qsize(SSDBImpl *ssdb, const Bytes &key, int64_t incr, Transa
 	return size;
 }
 
-static int qget_by_seq(leveldb::DB* db, const Bytes &key, uint64_t seq, std::string *val, uint64_t version){
+static int qget_by_seq(rocksdb::DB* db, const Bytes &key, uint64_t seq, std::string *val, uint64_t version){
 	std::string qkey = encode_qitem_key(key, seq, version);
-	leveldb::Status s;
+	rocksdb::Status s;
 
-	s = db->Get(leveldb::ReadOptions(), qkey, val);
+	s = db->Get(rocksdb::ReadOptions(), qkey, val);
 	if(s.IsNotFound()){
 		return 0;
 	}else if(!s.ok()){
@@ -52,7 +52,7 @@ static int qget_by_seq(leveldb::DB* db, const Bytes &key, uint64_t seq, std::str
 	}
 }
 
-static int qget_uint64(leveldb::DB* db, const Bytes &key, uint64_t seq, uint64_t *ret, uint64_t version){
+static int qget_uint64(rocksdb::DB* db, const Bytes &key, uint64_t seq, uint64_t *ret, uint64_t version){
 	std::string val;
 	*ret = 0;
 	int s = qget_by_seq(db, key, seq, &val, version);

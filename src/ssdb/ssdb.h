@@ -11,7 +11,7 @@ found in the LICENSE file.
 #include "const.h"
 #include "options.h"
 #include "iterator.h"
-#include "leveldb/db.h"
+#include "rocksdb/db.h"
 #include "transaction.h"
 
 class Bytes;
@@ -28,8 +28,8 @@ public:
 	virtual int flushdb() = 0;
 
 	// return (start, end], not include start
-	virtual Iterator* iterator(const std::string &start, const std::string &end, uint64_t limit, const leveldb::Snapshot *snapshot=NULL) = 0;
-	virtual Iterator* rev_iterator(const std::string &start, const std::string &end, uint64_t limit, const leveldb::Snapshot *snapshot=NULL) = 0;
+	virtual Iterator* iterator(const std::string &start, const std::string &end, uint64_t limit, const rocksdb::Snapshot *snapshot=NULL) = 0;
+	virtual Iterator* rev_iterator(const std::string &start, const std::string &end, uint64_t limit, const rocksdb::Snapshot *snapshot=NULL) = 0;
 
 	//void flushdb();
 	virtual uint64_t size() = 0;
@@ -39,12 +39,12 @@ public:
 
 	/* version control */
 	virtual int new_version(const Bytes &key, char t, uint64_t *version) = 0;
-	virtual int get_version(const Bytes &key, char *t, uint64_t *version, const leveldb::Snapshot *snapshot=NULL) = 0;
+	virtual int get_version(const Bytes &key, char *t, uint64_t *version, const rocksdb::Snapshot *snapshot=NULL) = 0;
 
 	/* raw operates */
 	virtual int raw_set(const Bytes &key, const Bytes &val) = 0;
 	virtual int raw_del(const Bytes &key) = 0;
-	virtual int raw_get(const Bytes &key, std::string *val, const leveldb::Snapshot *snapshot=NULL) = 0;
+	virtual int raw_get(const Bytes &key, std::string *val, const rocksdb::Snapshot *snapshot=NULL) = 0;
 	virtual int raw_size(const Bytes &key, int64_t *size) = 0;
 	virtual int incr_raw_size(const Bytes &key, int64_t incr, int64_t *size, Transaction &trans) = 0;
 
@@ -57,7 +57,7 @@ public:
 	virtual int getbit(const Bytes &key, int bitoffset, uint64_t version) = 0;
 
 	virtual int get(const Bytes &key, std::string *val, uint64_t version) = 0;
-	virtual int mget(const std::vector<Bytes> &key, std::vector<std::string> *val, std::vector<uint64_t> version, const leveldb::Snapshot *snapshot) = 0;
+	virtual int mget(const std::vector<Bytes> &key, std::vector<std::string> *val, std::vector<uint64_t> version, const rocksdb::Snapshot *snapshot) = 0;
 	// return (start, end]
 	virtual KIterator* scan(const Bytes &start, const Bytes &end, uint64_t limit) = 0;
 	virtual KIterator* rscan(const Bytes &start, const Bytes &end, uint64_t limit) = 0;
@@ -90,7 +90,7 @@ public:
 	/**
 	 * @return -1: error; 0: not found; 1: found
 	 */
-	virtual int zget(const Bytes &key, const Bytes &field, std::string *score, uint64_t version, const leveldb::Snapshot *snapshot=NULL) = 0;
+	virtual int zget(const Bytes &key, const Bytes &field, std::string *score, uint64_t version, const rocksdb::Snapshot *snapshot=NULL) = 0;
 	virtual int64_t zrank(const Bytes &key, const Bytes &field, uint64_t version) = 0;
 	virtual int64_t zrrank(const Bytes &key, const Bytes &field, uint64_t version) = 0;
 	virtual ZIterator* zrange(const Bytes &key, int64_t start, int64_t stop, uint64_t version) = 0;
@@ -141,8 +141,8 @@ public:
 	virtual int64_t qclear(const Bytes &key, Transaction &trans, uint64_t version) = 0;
 	virtual QIterator *qscan(const Bytes &key, uint64_t seq_start, uint64_t limit, uint64_t version) = 0;
 
-	virtual const leveldb::Snapshot *get_snapshot() = 0;
-	virtual void release_snapshot(const leveldb::Snapshot *snapshot) = 0;
+	virtual const rocksdb::Snapshot *get_snapshot() = 0;
+	virtual void release_snapshot(const rocksdb::Snapshot *snapshot) = 0;
 
 	// concurrent control
 	virtual void lock_key(const std::string &key) = 0;
@@ -152,7 +152,7 @@ public:
 	virtual Iterator* keys() = 0;
 
 	//
-	virtual leveldb::Status write(const leveldb::WriteOptions &options, leveldb::WriteBatch *batch) = 0;
+	virtual rocksdb::Status write(const rocksdb::WriteOptions &options, rocksdb::WriteBatch *batch) = 0;
 };
 
 #endif

@@ -10,7 +10,7 @@ found in the LICENSE file.
 #include <string>
 #include "../util/bytes.h"
 
-namespace leveldb{
+namespace rocksdb{
 	class Iterator;
 	class Comparator;
 }
@@ -20,7 +20,7 @@ public:
 	enum Direction{
 		FORWARD, BACKWARD
 	};
-	Iterator(leveldb::Iterator *it,
+	Iterator(rocksdb::Iterator *it,
 			const std::string &end,
 			uint64_t limit,
 			Direction direction=Iterator::FORWARD);
@@ -31,8 +31,8 @@ public:
 	Bytes val();
 
 private:
-	leveldb::Iterator *it;
-	leveldb::Comparator *cmp;
+	rocksdb::Iterator *it;
+	rocksdb::Comparator *cmp;
 	std::string end;
 	uint64_t limit;
 	bool is_first;

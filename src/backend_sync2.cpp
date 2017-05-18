@@ -723,10 +723,10 @@ BackendSync::CopySnapshot *BackendSync::create_snapshot(const std::string &host)
 
 	SSDBServer *server = this->owner;
 
-	// lockdb gurantee the atomicly of create leveldb snapshot and get binlog seq.
+	// lockdb gurantee the atomicly of create rocksdb snapshot and get binlog seq.
 	server->ssdb->lock_db();
 
-	const leveldb::Snapshot *snapshot = server->ssdb->get_snapshot();
+	const rocksdb::Snapshot *snapshot = server->ssdb->get_snapshot();
 	uint64_t binlog_last_seq = server->binlog->get_last_seq();
 	time_t now = time(NULL);
 
@@ -735,8 +735,11 @@ BackendSync::CopySnapshot *BackendSync::create_snapshot(const std::string &host)
 	csnapshot->status = CopySnapshot::ACTIVE;
 	csnapshot->last_active = now;
 	csnapshot->binlog_seq = binlog_last_seq;
+#if __cplusplus > 199711L
+	snapshots.insert(std::make_pair(host, csnapshot));
+#else
 	snapshots.insert(std::make_pair<std::string, CopySnapshot *>(host, csnapshot));
-
+#endif
 	server->ssdb->unlock_db();
 
 	return csnapshot;

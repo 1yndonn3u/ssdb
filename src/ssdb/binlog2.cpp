@@ -191,8 +191,11 @@ int SSDB_BinLog::recover() {
 				continue;
 			}
 			tmp_last_seq = event.seq();
+#if __cplusplus > 199711L
+			files_min_seq.insert(std::make_pair(tmp_files[i], tmp_last_seq));
+#else
 			files_min_seq.insert(std::make_pair<std::string, uint64_t>(tmp_files[i], tmp_last_seq));
-
+#endif
 			reader.unbind();
 			logfile.close();
 		}
@@ -289,8 +292,11 @@ int SSDB_BinLog::new_file() {
 		return -1;
 	}
 	files.push_back(filename);
+#if __cplusplus > 199711L
+	files_min_seq.insert(std::make_pair(filename, last_seq));
+#else
 	files_min_seq.insert(std::make_pair<std::string, uint64_t>(filename, last_seq));
-
+#endif
 	return 0;
 }
 
@@ -499,7 +505,11 @@ void SSDB_BinLog::incr_inuse(const std::string &binlog) {
 
 	std::map<std::string, uint32_t>::iterator it = inuse_binlogs.find(binlog);
 	if (it == inuse_binlogs.end()) {
+#if __cplusplus > 199711L
+		inuse_binlogs.insert(std::make_pair(binlog, 1));
+#else
 		inuse_binlogs.insert(std::make_pair<std::string, uint32_t>(binlog, 1));
+#endif
 	} else {
 		it->second++;
 	}

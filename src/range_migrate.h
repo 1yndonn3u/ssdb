@@ -2,7 +2,7 @@
 #define SSDB_RANGE_MIGRATE_H_
 
 #include "include.h"
-#include "leveldb/slice.h"
+#include "rocksdb/slice.h"
 #include "net/fde.h"
 #include "ssdb/ssdb.h"
 #include "ssdb/ssdb_impl.h"

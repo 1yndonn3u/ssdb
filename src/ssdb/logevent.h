@@ -46,7 +46,7 @@ public:
 	int load(const Bytes &s);
 /*
 	int load(const std::string &s);
-	int load(const leveldb::Slice &s);*/
+	int load(const rocksdb::Slice &s);*/
 
 public:
 	static void pack32(std::string &s, uint32_t n);

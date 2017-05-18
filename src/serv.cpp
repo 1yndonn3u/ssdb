@@ -1088,7 +1088,7 @@ int proc_set_kv_range(NetworkServer *net, Link *link, const Request &req, Respon
 
 int proc_dbsize(NetworkServer *net, Link *link, const Request &req, Response *resp){
 	SSDBServer *serv = (SSDBServer *)net->data;
-	uint64_t size = serv->ssdb->leveldbfilesize();
+	uint64_t size = serv->ssdb->dbfilesize();
 	resp->push_back("ok");
 	resp->push_back(str(size));
 	return 0;
@@ -1119,7 +1119,7 @@ int proc_info(NetworkServer *net, Link *link, const Request &req, Response *resp
 	}
 
 	{
-		uint64_t size = serv->ssdb->leveldbfilesize();
+		uint64_t size = serv->ssdb->dbfilesize();
 		resp->push_back("dbsize:" + str(size));
 	}
 
@@ -1190,8 +1190,8 @@ int proc_info(NetworkServer *net, Link *link, const Request &req, Response *resp
 		resp->push_back("expires:" + str(nexpires));
 	}
 
-	if(req.size() == 1 || req[1] == "leveldb"){
-		resp->push_back("# levedb");
+	if(req.size() == 1 || req[1] == "rocksdb"){
+		resp->push_back("# rocksdb");
 		std::vector<std::string> tmp = serv->ssdb->info();
 		for(int i=0; i<(int)tmp.size(); i++){
 			std::string block = tmp[i];

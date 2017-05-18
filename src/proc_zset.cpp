@@ -248,7 +248,6 @@ action:
 	if(!exists) {
 		NEW_VERSION(req[1], op, version);
 	}
-	log_info("zset version %"PRIu64, version);
 
 	Transaction trans(serv->ssdb, req[1]);
 	int ret = serv->ssdb->zset(req[1], req[2], req[3], trans, version);

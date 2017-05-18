@@ -24,7 +24,7 @@ public:
 	// "In Redis 2.6 or older the command returns -1 if the key does not exist
 	// or if the key exist but has no associated expire. Starting with Redis 2.8.."
 	// I stick to Redis 2.6
-	int64_t get_ttl(const Bytes &key, const leveldb::Snapshot *snapshot=NULL);
+	int64_t get_ttl(const Bytes &key, const rocksdb::Snapshot *snapshot=NULL);
 	// The caller must hold mutex before calling set/del functions
 	int del_ttl(const Bytes &key);
 	int set_ttl(const Bytes &key, int64_t ttl);

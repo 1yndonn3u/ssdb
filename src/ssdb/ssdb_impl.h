@@ -6,8 +6,8 @@ found in the LICENSE file.
 #ifndef SSDB_IMPL_H_
 #define SSDB_IMPL_H_
 
-#include "leveldb/db.h"
-#include "leveldb/slice.h"
+#include "rocksdb/db.h"
+#include "rocksdb/slice.h"
 #include "../util/log.h"
 #include "../util/config.h"
 
@@ -21,16 +21,16 @@ found in the LICENSE file.
 #include "t_set.h"
 
 inline
-static leveldb::Slice slice(const Bytes &b){
-	return leveldb::Slice(b.data(), b.size());
+static rocksdb::Slice slice(const Bytes &b){
+	return rocksdb::Slice(b.data(), b.size());
 }
 
 class SSDBImpl : public SSDB
 {
 private:
 	friend class SSDB;
-	leveldb::DB* ldb;
-	leveldb::Options options;
+	rocksdb::DB* ldb;
+	rocksdb::Options options;
 	uint64_t global_version;             /* global version increase by 1 every time coming up to an delete */
 	uint64_t version_update_threshold;   /* threshold to record global version */
 	uint64_t num_version_update;         /* numbers of version updates since last record */
@@ -58,27 +58,27 @@ public:
 
 	virtual int flushdb();
 
-	virtual leveldb::Options get_options();
+	virtual rocksdb::Options get_options();
 
 	// return (start, end], not include start
-	virtual Iterator* iterator(const std::string &start, const std::string &end, uint64_t limit, const leveldb::Snapshot *snapshot=NULL);
-	virtual Iterator* rev_iterator(const std::string &start, const std::string &end, uint64_t limit, const leveldb::Snapshot *snapshot=NULL);
+	virtual Iterator* iterator(const std::string &start, const std::string &end, uint64_t limit, const rocksdb::Snapshot *snapshot=NULL);
+	virtual Iterator* rev_iterator(const std::string &start, const std::string &end, uint64_t limit, const rocksdb::Snapshot *snapshot=NULL);
 
 	//void flushdb();
 	virtual uint64_t size();
-	virtual uint64_t leveldbfilesize();
+	virtual uint64_t dbfilesize();
 	virtual std::vector<std::string> info();
 	virtual void compact();
 	virtual int key_range(std::vector<std::string> *keys);
 
 	/* version control */
 	virtual int new_version(const Bytes &key, char t, uint64_t *version);
-	virtual int get_version(const Bytes &key, char *t, uint64_t *version, const leveldb::Snapshot *snapshot=NULL);
+	virtual int get_version(const Bytes &key, char *t, uint64_t *version, const rocksdb::Snapshot *snapshot=NULL);
 
 	/* raw operates */
 	virtual int raw_set(const Bytes &key, const Bytes &val);
 	virtual int raw_del(const Bytes &key);
-	virtual int raw_get(const Bytes &key, std::string *val, const leveldb::Snapshot *snapshot=NULL);
+	virtual int raw_get(const Bytes &key, std::string *val, const rocksdb::Snapshot *snapshot=NULL);
 	virtual int raw_size(const Bytes &key, int64_t *size);
 	virtual int incr_raw_size(const Bytes &key, int64_t incr, int64_t *size, Transaction &trans);
 
@@ -91,7 +91,7 @@ public:
 	virtual int getbit(const Bytes &key, int bitoffset, uint64_t version);
 
 	virtual int get(const Bytes &key, std::string *val, uint64_t version);
-	virtual int mget(const std::vector<Bytes> &key, std::vector<std::string> *val, std::vector<uint64_t> version, const leveldb::Snapshot *snapshot);
+	virtual int mget(const std::vector<Bytes> &key, std::vector<std::string> *val, std::vector<uint64_t> version, const rocksdb::Snapshot *snapshot);
 	// return (start, end]
 	virtual KIterator* scan(const Bytes &start, const Bytes &end, uint64_t limit);
 	virtual KIterator* rscan(const Bytes &start, const Bytes &end, uint64_t limit);
@@ -126,7 +126,7 @@ public:
 	/**
 	 * @return -1: error; 0: not found; 1: found
 	 */
-	virtual int zget(const Bytes &key, const Bytes &field, std::string *score, uint64_t version, const leveldb::Snapshot *snapshot=NULL);
+	virtual int zget(const Bytes &key, const Bytes &field, std::string *score, uint64_t version, const rocksdb::Snapshot *snapshot=NULL);
 	virtual int64_t zrank(const Bytes &key, const Bytes &field, uint64_t version);
 	virtual int64_t zrrank(const Bytes &key, const Bytes &field, uint64_t version);
 	virtual int64_t zclear(const Bytes &key, Transaction &trans, uint64_t version);
@@ -184,10 +184,10 @@ private:
 
 public:
 	// snapshot
-	virtual const leveldb::Snapshot *get_snapshot();
-	virtual void release_snapshot(const leveldb::Snapshot *snapshot);
+	virtual const rocksdb::Snapshot *get_snapshot();
+	virtual void release_snapshot(const rocksdb::Snapshot *snapshot);
 
-	virtual leveldb::Status write(const leveldb::WriteOptions &options, leveldb::WriteBatch *batch);
+	virtual rocksdb::Status write(const rocksdb::WriteOptions &options, rocksdb::WriteBatch *batch);
 };
 
 #define SSDB_CHECK_KEY_LEN(k)\

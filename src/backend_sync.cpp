@@ -180,10 +180,10 @@ BackendSync::CopySnapshot *BackendSync::create_snapshot(const std::string &host)
 
 	//SSDBServer *server = this->owner;
 
-	// lockdb gurantee the atomicly of create leveldb snapshot and get binlog seq.
+	// lockdb gurantee the atomicly of create rocksdb snapshot and get binlog seq.
 	//server->ssdb->lock_db();
 
-	const leveldb::Snapshot *snapshot = this->ssdb->get_snapshot();
+	const rocksdb::Snapshot *snapshot = this->ssdb->get_snapshot();
 	//uint64_t binlog_last_seq = server->binlog->get_last_seq();
 	time_t now = time(NULL);
 

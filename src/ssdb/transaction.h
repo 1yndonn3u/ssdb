@@ -7,20 +7,20 @@ found in the LICENSE file.
 #ifndef SSDB_TRANSACTION_H_
 #define SSDB_TRANSACTION_H_
 
-#include "leveldb/db.h"
-#include "leveldb/write_batch.h"
+#include "rocksdb/db.h"
+#include "rocksdb/write_batch.h"
 #include "../util/bytes.h"
 
 class SSDB;
 
 class Transaction {
 public:
-	typedef leveldb::Status Status;
+	typedef rocksdb::Status Status;
 
 private:
-	typedef leveldb::Slice Slice;
-	typedef leveldb::WriteBatch WriteBatch;
-	typedef leveldb::WriteOptions WriteOptions;
+	typedef rocksdb::Slice Slice;
+	typedef rocksdb::WriteBatch WriteBatch;
+	typedef rocksdb::WriteOptions WriteOptions;
 
 	SSDB *db;
 	WriteBatch updates;

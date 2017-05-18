@@ -90,7 +90,7 @@ int LogEvent::load(const Bytes &s){
 }
 
 /*
-int LogEvent::load(const leveldb::Slice &s){
+int LogEvent::load(const rocksdb::Slice &s){
 	return load(s.data(), s.size());
 }
 
