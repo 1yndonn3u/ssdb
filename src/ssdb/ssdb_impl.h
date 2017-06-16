@@ -49,7 +49,7 @@ public:
 	virtual void unlock_key(const std::string &key);
 	virtual void lock_db();
 	virtual void unlock_db();
-	virtual Iterator* keys();
+	virtual Iterator* keys(int16_t slot);
 
 public:
 	virtual ~SSDBImpl();
