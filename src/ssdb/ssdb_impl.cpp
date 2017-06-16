@@ -542,9 +542,15 @@ int SSDBImpl::incr_raw_size(const Bytes &key, int64_t incr, int64_t *size, Trans
 	return 0;
 }
 
-Iterator* SSDBImpl::keys() {
-	std::string start = encode_version_key("");
-	std::string end = encode_version_key("\xff");
+Iterator* SSDBImpl::keys(int16_t slot) {
+	std::string start;
+	start.append(SSDB_VERSION_KEY_PREFIX, sizeof(SSDB_VERSION_KEY_PREFIX));
+	start.append((char*)&slot, sizeof(slot));
+
+	std::string end;
+	end.append(SSDB_VERSION_KEY_PREFIX, sizeof(SSDB_VERSION_KEY_PREFIX));
+	end.append(1, '\xff');
+	end.append((char*)&slot, sizeof(slot));
 	return this->iterator(start, end, UINT_MAX);
 }
 

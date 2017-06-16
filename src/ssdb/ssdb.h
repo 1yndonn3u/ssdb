@@ -149,7 +149,7 @@ public:
 	virtual void unlock_key(const std::string &key) = 0;
 	virtual void lock_db() = 0;
 	virtual void unlock_db() = 0;
-	virtual Iterator* keys() = 0;
+	virtual Iterator* keys(int16_t slot) = 0;
 
 	//
 	virtual leveldb::Status write(const leveldb::WriteOptions &options, leveldb::WriteBatch *batch) = 0;

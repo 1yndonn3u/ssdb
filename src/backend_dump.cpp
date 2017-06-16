@@ -76,28 +76,30 @@ void* BackendDump::_dump_regex_thread(void *arg){
 		return NULL;
 	}
 
-	Iterator *it = backend->ssdb->keys();
-	if(it == NULL) {
-		log_error("create iterator for keys failed");
-		backend->tid = 0;
-		return NULL;
-	}
-
-	int allkeys = (pattern[0] == '*' && pattern[1] == '\0');
-	while(it->next()) {
-		std::string k;
-		if (decode_version_key(it->key(), &k) != 0) {
-			continue;
+	for (int i = 0; i < CLUSTER_SLOTS; ++i) {
+		Iterator *it = backend->ssdb->keys(i);
+		if(it == NULL) {
+			log_error("create iterator for keys in slot %d failed", i);
+			backend->tid = 0;
+			return NULL;
 		}
 
-		if(allkeys ||  stringmatchlen(pattern.data(), pattern.size(), k.data(), k.size(),0)) {
-			log_debug("write key %s", k.c_str());
-			write(fd, k.data(), k.size());
-			write(fd, "\n", 1);
-		}
-	}
+		int allkeys = (pattern[0] == '*' && pattern[1] == '\0');
+		while(it->next()) {
+			std::string k;
+			if (decode_version_key(it->key(), &k) != 0) {
+				continue;
+			}
 
-	SAFE_DELETE(it);
+			if(allkeys ||  stringmatchlen(pattern.data(), pattern.size(), k.data(), k.size(),0)) {
+				log_debug("write key %s", k.c_str());
+				write(fd, k.data(), k.size());
+				write(fd, "\n", 1);
+			}
+		}
+
+		SAFE_DELETE(it);
+	}
 	close(fd);
 	if(rename(tmpfile, KEYS_FILE_NAME) == -1) {
 		log_error("failed to rename tmpfile to keys file");
@@ -128,7 +130,7 @@ void* BackendDump::_dump_slot_thread(void *arg){
 		return NULL;
 	}
 
-	Iterator *it = backend->ssdb->keys();
+	Iterator *it = backend->ssdb->keys(slot);
 	if(it == NULL) {
 		log_error("create iterator for keys failed");
 		backend->tid = 0;
@@ -141,11 +143,9 @@ void* BackendDump::_dump_slot_thread(void *arg){
 			continue;
 		}
 
-		if(KEY_HASH_SLOT(k) == slot) {
-			log_debug("write key %s", k.c_str());
-			write(fd, k.data(), k.size());
-			write(fd, "\n", 1);
-		}
+		log_debug("write key %s", k.c_str());
+		write(fd, k.data(), k.size());
+		write(fd, "\n", 1);
 	}
 
 	SAFE_DELETE(it);
