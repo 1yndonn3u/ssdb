@@ -25,8 +25,7 @@ std::string encode_version_key(const Bytes &key) {
 	version = big_endian(version);
 	buf.append((char*)&version, sizeof(version));
 
-	/* reserve slot */
-	int16_t slot = -1;
+	int16_t slot = KEY_HASH_SLOT(key);
 	buf.append((char*)&slot, sizeof(slot));
 	return buf;
 }
