@@ -277,7 +277,7 @@ Compared with SSDB, SSDB-Evolution has an more comprehensive and better support 
     +--------------------------+--------------------------------------------+
     |  stop_slave              | stop_slave [last_seq]                      |
     +--------------------------+--------------------------------------------+
-    |  key_slot                | key_slot  key                              |
+    |  key_slot                | key_slot key                               |
     +--------------------------+--------------------------------------------+
     |  set_slot                | set_slot slot                              |
     +--------------------------+--------------------------------------------+
@@ -297,19 +297,39 @@ Compared with SSDB, SSDB-Evolution has an more comprehensive and better support 
     +--------------------------+--------------------------------------------+
     |  slot_postimporting      | slot_postimporting                         |
     +--------------------------+--------------------------------------------+
+    |  dump                    | dump pattern                               |
+    +--------------------------+--------------------------------------------+
+    |  dump_slot               | dump_slot slot                             |
+    +--------------------------+--------------------------------------------+
 
 ### Description
 
     change_master_to: swith replication context to designated ip and port with last_seq(binlog_seq) and last_key(last sync key in snapshot).
+
     start_slave: run replication thread with current replication context with read only mode.
+
     stop_slave: stop replication thread.
+
     key_slot: test an key the slot it belongs to.
+
     set_slot: set the slot that the instance responsible for.
+
     unset_slot: clean the slot that the instance responsible for.
+
     lock_db_with_read_lock: read only mode.
+
     unlock_db: enable write.
+
     migrate_slot: migrate specified slot to another instance with the timeout(s) and speed(M).
+
     slot_premigrating: flag an slot ready to migrate.
+
     slot_postmigrating: flag an slot migration done and clean the responsiblity of this slot.
+
     slot_preimporting: flag an slot ready to import.
+
     slot_postimporting: flag an slot migration done and set the responsiblity of this slot.
+
+    dump: dump keys with specified pattern to file 'keys' at the working directory.
+
+    dump_slot: dump keys in specified slot to file 'keys-[slot]' at the working directiory.
