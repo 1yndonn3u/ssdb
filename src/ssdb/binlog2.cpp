@@ -562,6 +562,11 @@ int SSDB_BinLog::purge_logs(const std::string &to_log, bool included) {
 
 	// purge
 	for (size_t i = 0; i < files_to_purge.size(); i++) {
+		if (is_active_log(files_to_purge)) {
+			/* reserve the active log */
+			break;
+		}
+
 		std::string logname;
 		int ret = this->meta->qfront(BINLOG_FILE_LIST, &logname, 0);
 		if (ret != 1) {
