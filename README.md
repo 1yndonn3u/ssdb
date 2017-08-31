@@ -336,4 +336,4 @@ Compared with SSDB, SSDB-Evolution has an more comprehensive and better support 
 
 ### Run singleton
 
-    By default, all the slot(0-16383) is disable. Slots need to be enable before running redis command. **set_slot/unset_slot** could help to assign the range of responsible slots.
+    By default, all the slot(0-16383) is disable. Slots need to be enable before running redis command. 'set_slot/unset_slot' could help to assign the range of responsible slots.
